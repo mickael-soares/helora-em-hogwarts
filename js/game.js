@@ -475,48 +475,149 @@
         }
 
         buildMidParallaxLayer() {
-            // Camada Média 2D real (scrollFactor 0.48) com artes dedicadas para cada bioma!
-            const midY = 552;
+            // Continuidade limpa por trecho (scrollFactor 1.0 na margem atrás da estrada — sem empilhar em cima do lago/checkpoints!)
+            const horizonY = 556;
 
-            // Zona 1 — Plataforma 9¾: Expresso de Hogwarts (locomotiva única centralizada na estação)
-            this.add.image(620, midY, "mid_train").setOrigin(0.5, 1).setScrollFactor(0.48, 0).setScale(1.0).setAlpha(0.95).setDepth(1.6);
+            // Zona 1 (Plataforma 9¾: 0..1550) — limpa, deixando o castelo, o lago e o arco 9¾ respirarem!
 
-            // Zona 2 — Floresta Proibida: pinheiros místicos + cogumelos esmeralda
-            [1180, 1460, 1740].forEach((fx, i) => {
-                this.add.image(fx, midY + 8, "mid_forest")
+            // Zona 2 (Floresta Proibida: 1750..2950) — bosque de pinheiros ao fundo + Expresso de Hogwarts animado!
+            [1840, 2120, 2400, 2680].forEach((fx, i) => {
+                this.add.image(fx, horizonY + 4, "mid_forest")
                     .setOrigin(0.5, 1)
-                    .setScrollFactor(0.48, 0)
-                    .setScale(0.95 + (i % 2) * 0.14)
-                    .setAlpha(0.92)
-                    .setDepth(1.6);
+                    .setScale(0.95 + (i % 2) * 0.12)
+                    .setAlpha(0.94)
+                    .setDepth(1.5);
             });
 
-            // Zona 3 — Campo de Quadribol: aros dourados + torre da Sonserina
-            [2060, 2420].forEach((qx, i) => {
-                this.add.image(qx, midY + 4, "mid_quidditch")
-                    .setOrigin(0.5, 1)
-                    .setScrollFactor(0.48, 0)
-                    .setScale(0.92 + (i % 2) * 0.08)
-                    .setAlpha(0.93)
-                    .setDepth(1.6);
-            });
+            // Expresso de Hogwarts animado passando na frente da Floresta Proibida (rodas, biela e fumaça reais!)
+            this.buildAnimatedTrain(1920, horizonY + 8);
 
-            // Zona 4 — Corredores de Hogwarts: arcos góticos iluminados
-            [2780, 3120, 3460].forEach((ax) => {
-                this.add.image(ax, midY + 6, "mid_arch")
-                    .setOrigin(0.5, 1)
-                    .setScrollFactor(0.48, 0)
-                    .setScale(0.94)
-                    .setAlpha(0.92)
-                    .setDepth(1.6);
-            });
+            // Zona 3 (Campo de Quadribol: 3400..4450) — aros dourados e torre da Sonserina bem espaçados
+            this.add.image(3620, horizonY + 4, "mid_quidditch").setOrigin(0.5, 1).setScale(0.94).setAlpha(0.94).setDepth(1.6);
+            this.add.image(3990, horizonY + 4, "mid_quidditch").setOrigin(0.5, 1).setScale(0.86).setAlpha(0.90).setDepth(1.6);
 
-            // Zona 5 — Salão Principal: tapete verde e dourado da Sonserina no chão final
+            // Zona 4 (Corredores de Hogwarts: 4950..5950) — arcos góticos iluminados antes do Chapéu Seletor
+            this.add.image(5080, horizonY + 4, "mid_arch").setOrigin(0.5, 1).setScale(0.94).setAlpha(0.93).setDepth(1.6);
+            this.add.image(5430, horizonY + 4, "mid_arch").setOrigin(0.5, 1).setScale(0.94).setAlpha(0.93).setDepth(1.6);
+
+            // Zona 5 (Salão Principal: 7150..8350) — tapete verde e dourado da Sonserina no chão final
             const carpetX = 7680;
             const carpetW = 1080;
             this.add.rectangle(carpetX, GROUND_Y - 12, carpetW, 30, 0x145232, 0.88).setDepth(3);
             this.add.rectangle(carpetX, GROUND_Y - 26, carpetW, 3, 0xe6c267, 0.95).setDepth(3);
             this.add.rectangle(carpetX, GROUND_Y + 2, carpetW, 3, 0xe6c267, 0.95).setDepth(3);
+        }
+
+        buildAnimatedTrain(startX, baseY) {
+            this.trainBaseY = baseY;
+            this.trainWheelAngle = 0;
+            this.trainSmokeTimer = 0;
+
+            this.trainRig = this.add.container(startX, baseY).setScale(0.88).setDepth(1.8);
+
+            // Corpo real da locomotiva (invertido para apontar para a DIREITA seguindo a jornada)
+            this.trainBody = this.add.image(0, 0, "mid_train").setOrigin(0.5, 1).setFlipX(true);
+            // Camada de mecanismo animado (raios das rodas + biela/pistão metálico)
+            this.trainMechGfx = this.add.graphics();
+
+            this.trainRig.add([this.trainBody, this.trainMechGfx]);
+        }
+
+        updateAnimatedTrain(time, dt) {
+            if (!this.trainRig) return;
+
+            // Desliza suavemente pelo trecho da Floresta Proibida (1780 -> 2820)
+            const speed = 58;
+            this.trainRig.x += speed * dt;
+            if (this.trainRig.x > 2840) {
+                this.trainRig.x = 1760;
+            }
+
+            // Vibração sutil da caldeira em movimento
+            this.trainRig.y = this.trainBaseY + Math.sin(time * 0.022) * 1.3;
+
+            // Rotação das 5 rodas + movimento orbital da biela/pistão
+            this.trainWheelAngle += dt * 4.2;
+            const a = this.trainWheelAngle;
+            const g = this.trainMechGfx;
+            g.clear();
+
+            // 3 rodas motrizes grandes + 2 rodas dianteiras menores
+            const bigWheels = [
+                { x: -112, y: -30, r: 24 },
+                { x: -42, y: -30, r: 24 },
+                { x: 28, y: -30, r: 24 }
+            ];
+            const smallWheels = [
+                { x: 88, y: -17, r: 12 },
+                { x: 156, y: -17, r: 12 }
+            ];
+
+            // Raios girando nas rodas grandes
+            g.lineStyle(2.2, 0xc9b48a, 0.72);
+            bigWheels.forEach((w) => {
+                for (let s = 0; s < 4; s++) {
+                    const ang = a + (s * Math.PI) / 4;
+                    g.lineBetween(
+                        w.x - Math.cos(ang) * (w.r - 4),
+                        w.y - Math.sin(ang) * (w.r - 4),
+                        w.x + Math.cos(ang) * (w.r - 4),
+                        w.y + Math.sin(ang) * (w.r - 4)
+                    );
+                }
+            });
+
+            // Raios girando nas rodas dianteiras
+            g.lineStyle(1.8, 0xb8a88a, 0.68);
+            smallWheels.forEach((w) => {
+                for (let s = 0; s < 3; s++) {
+                    const ang = a * 1.7 + (s * Math.PI) / 3;
+                    g.lineBetween(
+                        w.x - Math.cos(ang) * (w.r - 2),
+                        w.y - Math.sin(ang) * (w.r - 2),
+                        w.x + Math.cos(ang) * (w.r - 2),
+                        w.y + Math.sin(ang) * (w.r - 2)
+                    );
+                }
+            });
+
+            // Biela principal conectando as 3 rodas motrizes em órbita circular + pistão
+            const rodDx = Math.cos(a) * 9;
+            const rodDy = Math.sin(a) * 9;
+            g.lineStyle(4.5, 0xd9dee6, 0.92);
+            g.lineBetween(bigWheels[0].x + rodDx, bigWheels[0].y + rodDy, bigWheels[2].x + rodDx, bigWheels[2].y + rodDy);
+            // Haste do pistão indo até o cilindro dianteiro
+            g.lineStyle(3.5, 0xbec5d0, 0.9);
+            g.lineBetween(bigWheels[2].x + rodDx, bigWheels[2].y + rodDy, 102, -32);
+            // Pinos dourados da biela
+            g.fillStyle(0xf2d16b, 1);
+            bigWheels.forEach((w) => {
+                g.fillCircle(w.x + rodDx, w.y + rodDy, 3.5);
+            });
+
+            // Fumaça branca viva saindo da chaminé e subindo no céu noturno
+            this.trainSmokeTimer += dt;
+            if (this.trainSmokeTimer > 0.24) {
+                this.trainSmokeTimer = 0;
+                const scale = this.trainRig.scaleX;
+                const chimneyX = this.trainRig.x + 118 * scale;
+                const chimneyY = this.trainRig.y - 168 * scale;
+                const puff = this.add.image(chimneyX, chimneyY, "soft_glow")
+                    .setTint(0xf2f4fa)
+                    .setScale(0.32)
+                    .setAlpha(0.55)
+                    .setDepth(1.9);
+                this.tweens.add({
+                    targets: puff,
+                    x: chimneyX - Phaser.Math.Between(65, 115),
+                    y: chimneyY - Phaser.Math.Between(70, 115),
+                    scale: Phaser.Math.FloatBetween(1.15, 1.65),
+                    alpha: 0,
+                    duration: 1850,
+                    ease: "Quad.easeOut",
+                    onComplete: () => puff.destroy()
+                });
+            }
         }
 
         buildForegroundLayer() {
@@ -1012,10 +1113,11 @@
         update(time, delta) {
             const dt = delta / 1000;
 
-            // Vagalumes flutuando e atmosfera do bioma atual
+            // Vagalumes flutuando, trem animado na Floresta Proibida e atmosfera do bioma atual
             for (const dot of this.ambientFireflies) {
                 dot.y = dot.baseY + Math.sin(time * 0.0015 * dot.speed + dot.phase) * 14;
             }
+            this.updateAnimatedTrain(time, dt);
             this.updateBiomeAtmosphere(dt);
 
             // Sincronizar céu (parallax suave), bioma e chão (1:1) com a câmera em qualquer resolução
