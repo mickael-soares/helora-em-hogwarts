@@ -442,17 +442,18 @@
 
         applyResponsiveCamera(screenW, screenH) {
             const cam = this.cameras.main;
-            const zoom = Math.max(0.45, screenH / GAME_H);
+            const zoom = Math.max(0.42, screenH / GAME_H);
             cam.setZoom(zoom);
             const viewW = screenW / zoom;
-            const offsetX = viewW < 640 ? -24 : -190;
+            const offsetX = viewW < 640 ? -24 : -Math.min(200, Math.round(viewW * 0.16));
             cam.startFollow(this.player, true, 0.08, 0.08, offsetX, 0);
+            cam.centerOn(this.player.x - offsetX, GAME_H / 2);
 
             // Redimensionar fundo e chão para cobrir 100% da largura visível sem faixas pretas
-            const bgW = Math.max(viewW * 1.25, 1680);
+            const bgW = Math.max(viewW * 1.28, 1680);
             this.bgSky.setDisplaySize(bgW, GAME_H);
-            this.pathTile.setSize(Math.ceil(viewW) + 120, 260);
-            this.biomeOverlay.setSize(Math.ceil(viewW) + 120, GAME_H);
+            this.pathTile.setSize(Math.ceil(viewW) + 160, 260);
+            this.biomeOverlay.setSize(Math.ceil(viewW) + 160, GAME_H);
         }
 
         buildMidParallaxLayer() {
@@ -1154,7 +1155,7 @@
     UI.btnWalk.addEventListener("pointerleave", stopWalkBtn);
     UI.btnWalk.addEventListener("pointercancel", stopWalkBtn);
 
-    new Phaser.Game({
+    const game = new Phaser.Game({
         type: Phaser.AUTO,
         parent: "phaser-container",
         width: window.innerWidth,
@@ -1169,4 +1170,22 @@
         },
         scene: [HogwartsJourneyScene]
     });
+
+    // Garantir reajuste imediato ao virar o celular (retrato <-> paisagem)
+    let resizeTimer = null;
+    const syncViewportSize = () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            const w = window.visualViewport ? Math.round(window.visualViewport.width) : window.innerWidth;
+            const h = window.visualViewport ? Math.round(window.visualViewport.height) : window.innerHeight;
+            if (w > 0 && h > 0) {
+                game.scale.resize(w, h);
+            }
+        }, 120);
+    };
+    window.addEventListener("orientationchange", syncViewportSize);
+    window.addEventListener("resize", syncViewportSize);
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener("resize", syncViewportSize);
+    }
 })();
