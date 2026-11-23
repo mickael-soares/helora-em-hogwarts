@@ -246,6 +246,7 @@
             this.solvedIds = new Set();
             this.housePoints = 0;
             this.walkPhase = 0;
+            this.playerVel = 0;
             this.particleTimer = 0;
             this.lastZoneName = "";
 
@@ -620,6 +621,7 @@
             this.solvedIds.clear();
             this.housePoints = 0;
             this.walkPhase = 0;
+            this.playerVel = 0;
             this.lastZoneName = "";
 
             this.player.setPosition(210, GROUND_Y);
@@ -901,6 +903,7 @@
         }
 
         resetLegsToIdle() {
+            this.playerVel = 0;
             this.player.anims.stop();
             this.player.setTexture("helora_idle");
             this.player.setAngle(0);
@@ -1015,25 +1018,35 @@
             const moveRight = this.cursors.right.isDown || this.keyD.isDown || InputState.touchWalk || InputState.canvasHoldRight;
             const moveLeft = this.cursors.left.isDown || this.keyA.isDown;
 
-            if (moveRight || moveLeft) {
-                const dir = moveRight ? 1 : -1;
-                const speed = moveRight ? WALK_SPEED : WALK_SPEED * 0.82;
-                this.player.x = Phaser.Math.Clamp(this.player.x + dir * speed * dt, 130, DATA.finaleX - 115);
+            // Física com inércia suave (aceleração e frenagem orgânicas como no simulador)
+            const targetVel = moveRight ? WALK_SPEED : (moveLeft ? -WALK_SPEED * 0.82 : 0);
+            const accelRate = targetVel !== 0 ? 9.5 : 8.5;
+            this.playerVel += (targetVel - this.playerVel) * Math.min(1, accelRate * dt);
+            if (Math.abs(this.playerVel) < 4 && targetVel === 0) {
+                this.playerVel = 0;
+            }
+
+            const isMoving = Math.abs(this.playerVel) > 8;
+            if (isMoving) {
+                const dir = this.playerVel >= 0 ? 1 : -1;
+                const speedRatio = Math.min(1, Math.abs(this.playerVel) / WALK_SPEED);
+                this.player.x = Phaser.Math.Clamp(this.player.x + this.playerVel * dt, 130, DATA.finaleX - 115);
                 this.player.setFlipX(dir < 0);
                 this.player.setScale(0.92);
 
                 if (this.player.anims.currentAnim?.key !== "helora_walk_anim" || !this.player.anims.isPlaying) {
                     this.player.play("helora_walk_anim", true);
                 }
+                this.player.anims.timeScale = 0.65 + speedRatio * 0.55;
 
-                this.walkPhase += dt * 11;
-                this.player.y = GROUND_Y - Math.abs(Math.sin(this.walkPhase)) * 4;
-                this.player.setAngle(Math.sin(this.walkPhase) * 1.1);
+                this.walkPhase += dt * (6 + speedRatio * 5.5);
+                this.player.y = GROUND_Y - Math.abs(Math.sin(this.walkPhase)) * (3.5 * speedRatio);
+                this.player.setAngle(Math.sin(this.walkPhase) * (1.1 * speedRatio));
 
-                if (moveRight) UI.btnWalk.classList.add("walking");
+                UI.btnWalk.classList.toggle("walking", moveRight);
 
                 // Poeirinha mágica suave nos pés
-                this.stepDustTimer += dt;
+                this.stepDustTimer += dt * speedRatio;
                 if (this.stepDustTimer > 0.22) {
                     this.stepDustTimer = 0;
                     const puff = this.add.image(this.player.x - dir * 10, GROUND_Y - 5, "sparkle_dot")
@@ -1042,7 +1055,7 @@
                 }
 
                 // Rastro sutil da varinha
-                this.particleTimer += dt;
+                this.particleTimer += dt * speedRatio;
                 if (this.particleTimer > 0.14) {
                     this.particleTimer = 0;
                     const sp = this.add.image(
