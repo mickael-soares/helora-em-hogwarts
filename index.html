@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>A Jornada Mágica da Helora ✨</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="game-shell">
+        <div id="phaser-container"></div>
+
+        <!-- HUD Superior -->
+        <header id="hud" class="hidden">
+            <div class="hud-left">
+                <div class="hud-pill hud-house">
+                    <span class="crest-dot"></span>
+                    <span id="hud-location">Caminho para Hogwarts</span>
+                </div>
+                <div class="hud-pill hud-points">
+                    <span>🐍 Sonserina •</span>
+                    <strong id="hud-points">0 pts</strong>
+                </div>
+            </div>
+            <div class="hud-right">
+                <div class="hud-pill hud-progress" aria-label="Progresso do Quiz">
+                    <span class="orb" data-idx="0"></span>
+                    <span class="orb" data-idx="1"></span>
+                    <span class="orb" data-idx="2"></span>
+                    <span class="orb" data-idx="3"></span>
+                    <span class="orb" data-idx="4"></span>
+                    <span id="hud-count">0/5</span>
+                </div>
+                <button id="btn-mute" class="hud-icon-btn" title="Som ligado/desligado" aria-label="Alternar som">🔊</button>
+            </div>
+        </header>
+
+        <!-- Controles Mobile / PC -->
+        <div id="controls-bar" class="hidden">
+            <div class="controls-hint">PC: seta → ou D &nbsp;|&nbsp; Celular: segure o botão</div>
+            <button id="btn-walk" class="walk-btn" type="button">
+                <span>Andar</span>
+                <span class="walk-arrow">➜</span>
+            </button>
+        </div>
+
+        <!-- Tela Inicial -->
+        <div id="intro-overlay" class="modal-backdrop">
+            <div class="parchment-card intro-card">
+                <div class="wax-seal">H</div>
+                <p class="card-kicker">ESCOLA DE MAGIA E BRUXARIA DE HOGWARTS</p>
+                <h1 class="card-title">A Jornada Mágica da Helora</h1>
+                <p class="card-desc">
+                    Caminhe até Hogwarts respondendo <strong>5 quizzes mágicos</strong> pelo trajeto para desbloquear uma surpresa especial de aniversário!
+                </p>
+                <button id="btn-start" class="magic-btn" type="button">Começar Aventura ✨</button>
+            </div>
+        </div>
+
+        <!-- Balão de Quiz -->
+        <div id="quiz-overlay" class="modal-backdrop hidden">
+            <div class="parchment-card quiz-bubble">
+                <div class="wax-seal wax-small" id="quiz-seal">1</div>
+                <div class="quiz-header">
+                    <span id="quiz-badge" class="quiz-badge">Quiz 1/5</span>
+                    <span id="quiz-loc" class="quiz-loc">Plataforma 9¾</span>
+                </div>
+                <h2 id="quiz-question" class="quiz-question"></h2>
+                <div id="quiz-options" class="quiz-options"></div>
+                <div id="quiz-feedback" class="quiz-feedback hidden"></div>
+            </div>
+        </div>
+
+        <!-- Balão de Fala do Isac (Cena Final) -->
+        <div id="isac-bubble" class="isac-speech hidden">
+            <div class="isac-name">🧹 Isac • Sonserina</div>
+            <p id="isac-text" class="isac-text"></p>
+        </div>
+
+        <!-- Envelope Final (antes de abrir o cartão) -->
+        <div id="envelope-overlay" class="modal-backdrop hidden">
+            <div class="envelope-stage">
+                <p class="envelope-prompt">✨ Você chegou ao Salão Principal! ✨</p>
+                <button id="btn-open-envelope" class="hogwarts-envelope" type="button">
+                    <div class="env-flap"></div>
+                    <div class="env-body">
+                        <div class="env-to">Para: <strong>Helora</strong></div>
+                        <div class="env-house">Casa Sonserina • Hogwarts</div>
+                    </div>
+                    <div class="env-seal">💌</div>
+                    <div class="env-cta">Toque para abrir seu cartão!</div>
+                </button>
+            </div>
+        </div>
+
+        <!-- Cartão de Feliz Aniversário -->
+        <div id="card-overlay" class="modal-backdrop hidden">
+            <div id="confetti-layer"></div>
+            <div class="parchment-card birthday-card">
+                <div class="slytherin-ribbon"></div>
+                <div class="wax-seal wax-birthday">🎂</div>
+                <p id="bday-badge" class="card-kicker"></p>
+                <h1 id="bday-title" class="bday-title"></h1>
+                <p id="bday-subtitle" class="bday-subtitle"></p>
+                <div id="bday-message" class="bday-message"></div>
+                <p id="bday-stats" class="bday-stats"></p>
+                <p id="bday-signature" class="bday-signature"></p>
+                <button id="btn-replay" class="magic-btn" type="button">Jogar Novamente 🔄</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+    <script src="js/assets_data.js?v=4"></script>
+    <script src="js/quizData.js?v=4"></script>
+    <script src="js/music.js?v=4"></script>
+    <script src="js/game.js?v=4"></script>
+</body>
+</html>
