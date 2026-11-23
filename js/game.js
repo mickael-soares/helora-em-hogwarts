@@ -83,6 +83,7 @@
         hudCount: document.getElementById("hud-count"),
         orbs: Array.from(document.querySelectorAll("#hud .orb")),
         btnMute: document.getElementById("btn-mute"),
+        btnFullscreen: document.getElementById("btn-fullscreen"),
         controlsBar: document.getElementById("controls-bar"),
         btnWalk: document.getElementById("btn-walk"),
         introOverlay: document.getElementById("intro-overlay"),
@@ -273,34 +274,32 @@
 
             this.cameras.main.setBounds(0, 0, WORLD_WIDTH, GAME_H);
 
-            // 1. Camada Parallax Distante: Céu estrelado + Castelo de Hogwarts
-            this.bgSky = this.add.image(GAME_W / 2 + 120, GAME_H / 2, "bg_hogwarts");
-            this.bgSky.setDisplaySize(GAME_W * 1.32, GAME_H);
-            this.bgSky.setScrollFactor(0.05, 0);
+            // 1. Camada Parallax Distante: Céu estrelado + Castelo de Hogwarts (acompanha qualquer tela 100% cheia)
+            this.bgSky = this.add.image(GAME_W / 2, GAME_H / 2, "bg_hogwarts");
+            this.bgSky.setDisplaySize(1680, GAME_H);
             this.bgSky.setDepth(0);
 
             // 1.2 Atmosfera suave por bioma (muda a cor/luz nos 5 trechos)
-            this.biomeOverlay = this.add.rectangle(GAME_W / 2, GAME_H / 2, GAME_W, GAME_H, 0x1a2844, 0.06);
-            this.biomeOverlay.setScrollFactor(0, 0).setDepth(0.5);
+            this.biomeOverlay = this.add.rectangle(GAME_W / 2, GAME_H / 2, 2200, GAME_H, 0x1a2844, 0.06);
+            this.biomeOverlay.setDepth(0.5);
 
             // 1.5 Isac voando de fundo no céu (indo e voltando até a Helora chegar no final)
             this.isacBgDir = 1;
+            this.isacBgRelX = -120;
             this.isacBgTrailTimer = 0;
             this.shootingStarTimer = 3.2;
             this.biomeFxTimer = 0;
             this.stepDustTimer = 0;
-            this.isacBg = this.add.image(-120, 148, "isac_broom");
-            this.isacBg.setScrollFactor(0, 0);
+            this.isacBg = this.add.image(100, 148, "isac_broom");
             this.isacBg.setScale(0.36);
             this.isacBg.setAlpha(0.94);
             this.isacBg.setDepth(1);
 
-            // 1.8 Camada Parallax Intermediária (0.42x): pinheiros, aros de Quadribol e arcos góticos
+            // 1.8 Camada Parallax Intermediária
             this.buildMidParallaxLayer();
 
-            // 2. Camada Parallax Chão/Lanternas: TileSprite 1:1 com a caminhada
-            this.pathTile = this.add.tileSprite(GAME_W / 2, GAME_H - 130, GAME_W, 260, "bg_path_tile");
-            this.pathTile.setScrollFactor(0, 0);
+            // 2. Camada Parallax Chão/Lanternas: TileSprite 1:1 com a caminhada (preenche 100% da largura da tela)
+            this.pathTile = this.add.tileSprite(GAME_W / 2, GAME_H - 130, 2200, 260, "bg_path_tile");
             this.pathTile.setDepth(2);
 
             // 2.5 Camada de Primeiro Plano (1.18x) — silhuetas sutis de grama/brilhos na frente da estrada
@@ -419,8 +418,11 @@
             this.player.setScale(0.92);
             this.player.setDepth(10);
 
-            // Câmera segue a Helora suavemente
-            this.cameras.main.startFollow(this.player, true, 0.08, 0.08, -190, 0);
+            // Câmera segue a Helora suavemente e adapta zoom para 100% tela cheia (PC + Celular retrato/paisagem)
+            this.applyResponsiveCamera(this.scale.width, this.scale.height);
+            this.scale.on("resize", (gameSize) => {
+                this.applyResponsiveCamera(gameSize.width, gameSize.height);
+            });
 
             // Controles
             this.cursors = this.input.keyboard.createCursorKeys();
@@ -436,6 +438,21 @@
             this.input.on("pointerupoutside", () => { InputState.canvasHoldRight = false; });
 
             window.__heloraScene = this;
+        }
+
+        applyResponsiveCamera(screenW, screenH) {
+            const cam = this.cameras.main;
+            const zoom = Math.max(0.45, screenH / GAME_H);
+            cam.setZoom(zoom);
+            const viewW = screenW / zoom;
+            const offsetX = viewW < 640 ? -24 : -190;
+            cam.startFollow(this.player, true, 0.08, 0.08, offsetX, 0);
+
+            // Redimensionar fundo e chão para cobrir 100% da largura visível sem faixas pretas
+            const bgW = Math.max(viewW * 1.25, 1680);
+            this.bgSky.setDisplaySize(bgW, GAME_H);
+            this.pathTile.setSize(Math.ceil(viewW) + 120, 260);
+            this.biomeOverlay.setSize(Math.ceil(viewW) + 120, GAME_H);
         }
 
         buildMidParallaxLayer() {
@@ -465,17 +482,17 @@
         }
 
         spawnShootingStar() {
-            const sx = Phaser.Math.Between(180, GAME_W - 120);
+            const wv = this.cameras.main.worldView;
+            const sx = Phaser.Math.Between(Math.round(wv.left + 80), Math.round(wv.right - 60));
             const sy = Phaser.Math.Between(45, 190);
             const star = this.add.image(sx, sy, "sparkle_dot")
-                .setScrollFactor(0, 0)
                 .setTint(0xfff6cc)
                 .setScale(0.65)
                 .setDepth(1.2);
             this.tweens.add({
                 targets: star,
-                x: sx - 260,
-                y: sy + 120,
+                x: sx - 240,
+                y: sy + 115,
                 alpha: 0,
                 scale: 0.1,
                 duration: 780,
@@ -626,7 +643,8 @@
             // Esconde o bolo novamente até a próxima magia do Isac
             this.cakeSprite.setAlpha(0).setScale(0.1);
 
-            this.isacBg.setVisible(true).setPosition(-120, 148).setFlipX(false);
+            this.isacBg.setVisible(true).setFlipX(false);
+            this.isacBgRelX = -120;
             this.isacBgDir = 1;
 
             this.checkpointSprites.forEach(({ quiz, marker }) => {
@@ -775,9 +793,9 @@
             this.isacBg.setVisible(false);
             this.finaleMarker.setVisible(false);
 
-            const camLeft = this.cameras.main.scrollX;
-            const startX = camLeft + GAME_W + 170;
-            const hoverX = Math.min(DATA.finaleX + 95, camLeft + GAME_W - 195);
+            const wv = this.cameras.main.worldView;
+            const startX = wv.right + 160;
+            const hoverX = Math.min(DATA.finaleX + 70, wv.right - 130);
             const hoverY = GROUND_Y - 245;
 
             this.isacHero = this.add.image(startX, 110, "isac_broom");
@@ -861,7 +879,7 @@
                             hoverTween.stop();
                             this.tweens.add({
                                 targets: this.isacHero,
-                                x: camLeft - 260,
+                                x: wv.left - 240,
                                 y: 65,
                                 angle: -8,
                                 duration: 1150,
@@ -903,15 +921,17 @@
             this.biomeFxTimer += dt;
             if (this.biomeFxTimer > 0.32) {
                 this.biomeFxTimer = 0;
-                const camX = this.cameras.main.scrollX;
+                const wv = this.cameras.main.worldView;
+                const minX = Math.round(wv.left + 40);
+                const maxX = Math.max(minX + 40, Math.round(wv.right - 40));
                 if (x < 1650) {
                     // Vapor suave do Expresso de Hogwarts
-                    const steam = this.add.image(camX + Phaser.Math.Between(60, GAME_W - 60), GROUND_Y - 12, "soft_glow")
+                    const steam = this.add.image(Phaser.Math.Between(minX, maxX), GROUND_Y - 12, "soft_glow")
                         .setTint(0xf5e9d4).setScale(0.55).setAlpha(0.16).setDepth(3);
                     this.tweens.add({ targets: steam, y: steam.y - 75, scale: 1.2, alpha: 0, duration: 1500, onComplete: () => steam.destroy() });
                 } else if (x >= 6000) {
                     // Chuva suave de faíscas douradas/esmeralda no Salão Principal
-                    const sp = this.add.image(camX + Phaser.Math.Between(40, GAME_W - 40), 40, "sparkle_dot")
+                    const sp = this.add.image(Phaser.Math.Between(minX, maxX), 40, "sparkle_dot")
                         .setTint(Math.random() > 0.45 ? 0xffe484 : 0x52f29b).setScale(0.45).setAlpha(0.85).setDepth(13);
                     this.tweens.add({ targets: sp, y: GROUND_Y - 20, x: sp.x + Phaser.Math.Between(-45, 45), alpha: 0, duration: 2400, onComplete: () => sp.destroy() });
                 }
@@ -934,22 +954,33 @@
             }
             this.updateBiomeAtmosphere(dt);
 
-            // Isac voando no fundo do cenário indo e voltando até o final
+            // Sincronizar céu (parallax suave), bioma e chão (1:1) com a câmera em qualquer resolução
+            const cam = this.cameras.main;
+            const wv = cam.worldView;
+            const midX = wv.centerX;
+            const skyShift = -((cam.scrollX * 0.03) % 240);
+            this.bgSky.setPosition(midX + skyShift, GAME_H / 2);
+            this.biomeOverlay.setPosition(midX, GAME_H / 2);
+            this.pathTile.setPosition(midX, GAME_H - 130);
+            this.pathTile.tilePositionX = midX;
+
+            // Isac voando no fundo do cenário indo e voltando até o final (dentro da área visível)
             if (this.isacBg && this.isacBg.visible) {
-                this.isacBg.x += this.isacBgDir * 95 * dt;
-                this.isacBg.y = 148 + Math.sin(time * 0.0026) * 18;
-                if (this.isacBg.x > GAME_W + 130) {
+                this.isacBgRelX += this.isacBgDir * 95 * dt;
+                if (this.isacBgRelX > wv.width + 130) {
                     this.isacBgDir = -1;
                     this.isacBg.setFlipX(true);
-                } else if (this.isacBg.x < -130) {
+                } else if (this.isacBgRelX < -130) {
                     this.isacBgDir = 1;
                     this.isacBg.setFlipX(false);
                 }
+                this.isacBg.setPosition(wv.left + this.isacBgRelX, 148 + Math.sin(time * 0.0026) * 18);
+
                 this.isacBgTrailTimer += dt;
                 if (this.isacBgTrailTimer > 0.18) {
                     this.isacBgTrailTimer = 0;
                     const sp = this.add.image(this.isacBg.x - this.isacBgDir * 44, this.isacBg.y + 8, "sparkle_dot");
-                    sp.setScrollFactor(0, 0).setTint(Math.random() > 0.5 ? 0x52f29b : 0xffe484).setScale(0.26).setAlpha(0.75).setDepth(1);
+                    sp.setTint(Math.random() > 0.5 ? 0x52f29b : 0xffe484).setScale(0.26).setAlpha(0.75).setDepth(1);
                     this.tweens.add({ targets: sp, alpha: 0, scale: 0.08, duration: 550, onComplete: () => sp.destroy() });
                 }
             }
@@ -975,9 +1006,7 @@
             }
             this.kittenShadow.x = this.kitten.x;
 
-            // Sincronizar tile do chão com a câmera (1:1 parallax)
-            this.pathTile.tilePositionX = this.cameras.main.scrollX;
-
+            // Sincronizar tile do chão já atualizado acima
             if (this.state !== "WALKING") {
                 return;
             }
@@ -1107,6 +1136,17 @@
         UI.btnMute.textContent = SoundFX.muted ? "🔇" : "🔊";
     });
 
+    if (UI.btnFullscreen) {
+        UI.btnFullscreen.addEventListener("click", () => {
+            const el = document.documentElement;
+            if (!document.fullscreenElement) {
+                (el.requestFullscreen || el.webkitRequestFullscreen)?.call(el)?.catch?.(() => {});
+            } else {
+                (document.exitFullscreen || document.webkitExitFullscreen)?.call(document)?.catch?.(() => {});
+            }
+        });
+    }
+
     const startWalkBtn = (e) => { e.preventDefault(); SoundFX.unlock(); InputState.touchWalk = true; };
     const stopWalkBtn = (e) => { if (e) e.preventDefault(); InputState.touchWalk = false; };
     UI.btnWalk.addEventListener("pointerdown", startWalkBtn);
@@ -1117,15 +1157,15 @@
     new Phaser.Game({
         type: Phaser.AUTO,
         parent: "phaser-container",
-        width: GAME_W,
-        height: GAME_H,
+        width: window.innerWidth,
+        height: window.innerHeight,
         backgroundColor: "#0a0918",
         pixelArt: true,
         antialias: false,
         roundPixels: true,
         scale: {
-            mode: Phaser.Scale.FIT,
-            autoCenter: Phaser.Scale.CENTER_BOTH
+            mode: Phaser.Scale.RESIZE,
+            autoCenter: Phaser.Scale.NO_CENTER
         },
         scene: [HogwartsJourneyScene]
     });
