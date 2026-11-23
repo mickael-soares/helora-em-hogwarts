@@ -3,13 +3,13 @@ window.HELORA_QUIZ_DATA = {
     playerName: "Helora",
     house: "Sonserina",
 
-    // Os 5 checkpoints ao longo da jornada mágica (mapa estendido ~8600px)
+    // Os 5 checkpoints ao longo da jornada mágica (percurso estendido ~11.600px)
     quizzes: [
         {
             id: 1,
             propKey: "prop_platform",
             location: "Plataforma 9¾",
-            worldX: 1350,
+            worldX: 1600,
             question: "De qual plataforma parte o Expresso de Hogwarts na estação King's Cross?",
             options: [
                 "Plataforma 7½",
@@ -24,7 +24,7 @@ window.HELORA_QUIZ_DATA = {
             id: 2,
             propKey: "prop_owl",
             location: "Floresta Proibida",
-            worldX: 2800,
+            worldX: 3950,
             question: "Qual é o nome da fiel coruja branca de Harry Potter?",
             options: [
                 "Edwiges",
@@ -39,7 +39,7 @@ window.HELORA_QUIZ_DATA = {
             id: 3,
             propKey: "prop_snitch",
             location: "Campo de Quadribol",
-            worldX: 4250,
+            worldX: 6200,
             question: "Quantos pontos vale capturar o Pomo de Ouro em uma partida de Quadribol?",
             options: [
                 "50 pontos",
@@ -54,7 +54,7 @@ window.HELORA_QUIZ_DATA = {
             id: 4,
             propKey: "prop_hat",
             location: "Corredores de Hogwarts",
-            worldX: 5700,
+            worldX: 8350,
             question: "Qual é o animal símbolo da casa Sonserina (a casa da Helora)?",
             options: [
                 "Corvo",
@@ -69,7 +69,7 @@ window.HELORA_QUIZ_DATA = {
             id: 5,
             propKey: "prop_gate",
             location: "Portão do Salão Principal",
-            worldX: 7150,
+            worldX: 10150,
             question: "Qual feitiço é usado para acender uma luz na ponta da varinha?",
             options: [
                 "Lumos",
@@ -83,7 +83,7 @@ window.HELORA_QUIZ_DATA = {
     ],
 
     // Posição da chegada mágica após o 5º quiz (onde Isac invoca o bolo!)
-    finaleX: 8120,
+    finaleX: 11050,
 
     // Irmão da Helora voando na vassoura (Sonserina)
     brother: {
