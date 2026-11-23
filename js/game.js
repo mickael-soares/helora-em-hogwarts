@@ -228,10 +228,19 @@
                 frameHeight: 256
             });
             this.load.image("isac_broom", ASSETS.isac_broom);
-            this.load.image("kitten_orange", ASSETS.kitten_orange);
+            this.load.image("kitten_idle", ASSETS.kitten_idle);
+            this.load.spritesheet("kitten_walk", ASSETS.kitten_walk, {
+                frameWidth: 144,
+                frameHeight: 128
+            });
 
             this.load.image("decor_star", ASSETS.decor_star);
             this.load.image("decor_banner", ASSETS.decor_banner);
+
+            this.load.image("mid_train", ASSETS.mid_train);
+            this.load.image("mid_forest", ASSETS.mid_forest);
+            this.load.image("mid_quidditch", ASSETS.mid_quidditch);
+            this.load.image("mid_arch", ASSETS.mid_arch);
 
             this.load.image("prop_platform", ASSETS.prop_platform);
             this.load.image("prop_owl", ASSETS.prop_owl);
@@ -395,20 +404,28 @@
                 ease: "Sine.easeInOut"
             });
 
-            // 6. Gatinho Laranjinha (recorte nítido sem distorção + saltito chibi suave)
-            this.kittenShadow = this.add.ellipse(95, GROUND_Y - 2, 54, 12, 0x080716, 0.36).setDepth(8);
-            this.kitten = this.add.image(95, GROUND_Y - 2, "kitten_orange");
-            this.kitten.setOrigin(0.5, 1);
-            this.kitten.setScale(0.76);
-            this.kitten.setDepth(10);
-            this.kittenHopPhase = 0;
+            // 6. Gatinho Laranjinha (sentado quando parado + 4 quadros reais de patas andando!)
+            if (!this.anims.exists("kitten_walk_anim")) {
+                this.anims.create({
+                    key: "kitten_walk_anim",
+                    frames: this.anims.generateFrameNumbers("kitten_walk", { start: 0, end: 3 }),
+                    frameRate: 9,
+                    repeat: -1
+                });
+            }
 
-            // 7. Helora (sprites inteiros intactos, sem recortes improvisados)
+            this.kittenShadow = this.add.ellipse(95, GROUND_Y - 2, 54, 12, 0x080716, 0.36).setDepth(8);
+            this.kitten = this.add.sprite(95, GROUND_Y - 2, "kitten_idle");
+            this.kitten.setOrigin(0.5, 1);
+            this.kitten.setScale(0.74);
+            this.kitten.setDepth(10);
+
+            // 7. Helora (4 quadros reais com varinha sempre na mesma mão)
             if (!this.anims.exists("helora_walk_anim")) {
                 this.anims.create({
                     key: "helora_walk_anim",
-                    frames: this.anims.generateFrameNumbers("helora_walk", { start: 0, end: 1 }),
-                    frameRate: 6,
+                    frames: this.anims.generateFrameNumbers("helora_walk", { start: 0, end: 3 }),
+                    frameRate: 7,
                     repeat: -1
                 });
             }
@@ -458,7 +475,48 @@
         }
 
         buildMidParallaxLayer() {
-            // Camada média reservada (velas flutuantes removidas)
+            // Camada Média 2D real (scrollFactor 0.48) com artes dedicadas para cada bioma!
+            const midY = 552;
+
+            // Zona 1 — Plataforma 9¾: Expresso de Hogwarts (locomotiva única centralizada na estação)
+            this.add.image(620, midY, "mid_train").setOrigin(0.5, 1).setScrollFactor(0.48, 0).setScale(1.0).setAlpha(0.95).setDepth(1.6);
+
+            // Zona 2 — Floresta Proibida: pinheiros místicos + cogumelos esmeralda
+            [1180, 1460, 1740].forEach((fx, i) => {
+                this.add.image(fx, midY + 8, "mid_forest")
+                    .setOrigin(0.5, 1)
+                    .setScrollFactor(0.48, 0)
+                    .setScale(0.95 + (i % 2) * 0.14)
+                    .setAlpha(0.92)
+                    .setDepth(1.6);
+            });
+
+            // Zona 3 — Campo de Quadribol: aros dourados + torre da Sonserina
+            [2060, 2420].forEach((qx, i) => {
+                this.add.image(qx, midY + 4, "mid_quidditch")
+                    .setOrigin(0.5, 1)
+                    .setScrollFactor(0.48, 0)
+                    .setScale(0.92 + (i % 2) * 0.08)
+                    .setAlpha(0.93)
+                    .setDepth(1.6);
+            });
+
+            // Zona 4 — Corredores de Hogwarts: arcos góticos iluminados
+            [2780, 3120, 3460].forEach((ax) => {
+                this.add.image(ax, midY + 6, "mid_arch")
+                    .setOrigin(0.5, 1)
+                    .setScrollFactor(0.48, 0)
+                    .setScale(0.94)
+                    .setAlpha(0.92)
+                    .setDepth(1.6);
+            });
+
+            // Zona 5 — Salão Principal: tapete verde e dourado da Sonserina no chão final
+            const carpetX = 7680;
+            const carpetW = 1080;
+            this.add.rectangle(carpetX, GROUND_Y - 12, carpetW, 30, 0x145232, 0.88).setDepth(3);
+            this.add.rectangle(carpetX, GROUND_Y - 26, carpetW, 3, 0xe6c267, 0.95).setDepth(3);
+            this.add.rectangle(carpetX, GROUND_Y + 2, carpetW, 3, 0xe6c267, 0.95).setDepth(3);
         }
 
         buildForegroundLayer() {
@@ -631,9 +689,9 @@
             this.player.setScale(0.92);
             this.playerShadow.setPosition(210, GROUND_Y - 4);
 
-            this.kitten.setPosition(95, GROUND_Y - 2).setFlipX(false).setAngle(0).setScale(0.76);
+            this.kitten.anims.stop();
+            this.kitten.setPosition(95, GROUND_Y - 2).setTexture("kitten_idle").setFlipX(false).setAngle(0).setScale(0.74);
             this.kittenShadow.setPosition(95, GROUND_Y - 2);
-            this.kittenHopPhase = 0;
 
             if (this.isacHero) {
                 this.isacHero.destroy();
@@ -701,6 +759,8 @@
             this.burstMagic(this.player.x, this.player.y - 110, 32);
 
             // Gatinho pula feliz e solta coraçãozinho 💛
+            this.kitten.anims.stop();
+            this.kitten.setTexture("kitten_idle");
             const heart = this.add.text(this.kitten.x, this.kitten.y - 68, "💛", { fontSize: "24px" })
                 .setOrigin(0.5)
                 .setDepth(16);
@@ -989,7 +1049,7 @@
                 }
             }
 
-            // Gatinho laranjinha seguindo a Helora com saltito chibi limpo (sem distorção de imagem)
+            // Gatinho laranjinha: 4 quadros reais andando + pose sentado quando parado!
             const facingDir = this.player.flipX ? -1 : 1;
             const kittenTargetX = this.player.x - facingDir * 112;
             const kDist = kittenTargetX - this.kitten.x;
@@ -997,14 +1057,19 @@
                 const kStep = Math.sign(kDist) * Math.min(Math.abs(kDist), WALK_SPEED * 0.96 * dt);
                 this.kitten.x += kStep;
                 this.kitten.setFlipX(kDist < 0);
-                this.kittenHopPhase += dt * 13;
-                const hop = Math.abs(Math.sin(this.kittenHopPhase));
-                this.kitten.y = GROUND_Y - 2 - hop * 11;
-                this.kitten.setScale(0.76 * (1.03 - hop * 0.05), 0.76 * (0.96 + hop * 0.07));
-                this.kitten.setAngle(Math.cos(this.kittenHopPhase) * 3.5);
+                this.kitten.setScale(0.74);
+                this.kitten.setAngle(0);
+                if (this.kitten.anims.currentAnim?.key !== "kitten_walk_anim" || !this.kitten.anims.isPlaying) {
+                    this.kitten.play("kitten_walk_anim", true);
+                }
+                this.kitten.y = GROUND_Y - 2;
             } else if (this.state !== "CELEBRATE") {
-                const kBreath = 0.76 * (1 + Math.sin(time * 0.004) * 0.02);
-                this.kitten.setScale(0.76, kBreath);
+                if (this.kitten.anims.isPlaying) {
+                    this.kitten.anims.stop();
+                    this.kitten.setTexture("kitten_idle");
+                }
+                const kBreath = 0.74 * (1 + Math.sin(time * 0.004) * 0.02);
+                this.kitten.setScale(0.74, kBreath);
                 this.kitten.setAngle(0);
                 this.kitten.y = GROUND_Y - 2;
             }
