@@ -1,30 +1,37 @@
-// Dados editáveis do Quiz e do Cartão de Aniversário da Helora
+// Dados editáveis das 5 Fases (1 background exclusivo por fase) e do Cartão da Helora
 window.HELORA_QUIZ_DATA = {
     playerName: "Helora",
     house: "Sonserina",
 
-    // Os 5 checkpoints ao longo da jornada mágica (percurso estendido ~11.600px)
+    // 5 Fases sequenciais — cada uma com seu próprio cenário único, sem cortar nem duplicar
     quizzes: [
         {
             id: 1,
+            bgKey: "bg_diagon_alley",
+            indoor: false,
             propKey: "prop_platform",
-            location: "Plataforma 9¾",
-            worldX: 1600,
-            question: "De qual plataforma parte o Expresso de Hogwarts na estação King's Cross?",
+            location: "Beco Diagonal",
+            subtitle: "Onde toda jornada bruxa começa ✨",
+            question: "Em qual famosa loja do Beco Diagonal os bruxos compram sua primeira varinha?",
             options: [
-                "Plataforma 7½",
-                "Plataforma 9¾",
-                "Plataforma 10¼"
+                "Olivaras",
+                "Dedosdemel",
+                "Floreios e Borrões"
             ],
-            correctIndex: 1,
-            wrongHint: "Quase! Tente atravessar a parede entre as plataformas 9 e 10...",
-            successMsg: "Perfeito! +50 pts para a Sonserina! Embarque rumo a Hogwarts! ✨"
+            correctIndex: 0,
+            wrongHint: "Quase! Lembre-se: 'A varinha escolhe o bruxo'...",
+            successMsg: "Acertou! A varinha escolheu a Helora! +50 pts Sonserina! 🪄✨",
+            hasPotion: false,
+            miniGame: null
         },
         {
             id: 2,
+            bgKey: "bg_forest_rail",
+            indoor: false,
+            hasTrain: true,
             propKey: "prop_owl",
             location: "Floresta Proibida",
-            worldX: 3950,
+            subtitle: "O Expresso de Hogwarts cruza o viaduto 🚂",
             question: "Qual é o nome da fiel coruja branca de Harry Potter?",
             options: [
                 "Edwiges",
@@ -33,13 +40,17 @@ window.HELORA_QUIZ_DATA = {
             ],
             correctIndex: 0,
             wrongHint: "Hmm, esse não é o nome da coruja branca... Tente outro feitiço!",
-            successMsg: "Isso mesmo! +50 pts para a Sonserina! Edwiges entregou sua carta! 🦉"
+            successMsg: "Isso mesmo! Edwiges entregou sua carta mágica! +50 pts! 🦉",
+            hasPotion: true,
+            miniGame: "lumos"
         },
         {
             id: 3,
+            bgKey: "bg_quidditch_pitch",
+            indoor: false,
             propKey: "prop_snitch",
             location: "Campo de Quadribol",
-            worldX: 6200,
+            subtitle: "A torcida da Sonserina está te esperando 🏆",
             question: "Quantos pontos vale capturar o Pomo de Ouro em uma partida de Quadribol?",
             options: [
                 "50 pontos",
@@ -48,13 +59,17 @@ window.HELORA_QUIZ_DATA = {
             ],
             correctIndex: 2,
             wrongHint: "Vale bem mais do que isso — e ainda encerra a partida!",
-            successMsg: "Pegou o Pomo de Ouro! +50 pts extras para a Sonserina! 🏆"
+            successMsg: "Craque do Quadribol! +50 pts extras para a Sonserina! 🏆",
+            hasPotion: false,
+            miniGame: "snitch"
         },
         {
             id: 4,
+            bgKey: "bg_slytherin_common",
+            indoor: true,
             propKey: "prop_hat",
-            location: "Corredores de Hogwarts",
-            worldX: 8350,
+            location: "Sala Comunal da Sonserina",
+            subtitle: "Sob as águas esmeralda do Lago Negro 🐍💚",
             question: "Qual é o animal símbolo da casa Sonserina (a casa da Helora)?",
             options: [
                 "Corvo",
@@ -63,27 +78,32 @@ window.HELORA_QUIZ_DATA = {
             ],
             correctIndex: 1,
             wrongHint: "Pense no emblema verde e prata da casa de Salazar Sonserina...",
-            successMsg: "Orgulho da Sonserina! +50 pts! Astúcia, ambição e brilho próprio! 🐍💚"
+            successMsg: "Orgulho da Sonserina! Astúcia, ambição e brilho próprio! 🐍💚",
+            hasPotion: true,
+            miniGame: null
         },
         {
             id: 5,
+            bgKey: "bg_hogwarts_approach",
+            indoor: false,
+            isFinaleStage: true,
+            perspectiveMode: true,
             propKey: "prop_gate",
-            location: "Portão do Salão Principal",
-            worldX: 10150,
-            question: "Qual feitiço é usado para acender uma luz na ponta da varinha?",
+            location: "Portão de Hogwarts",
+            subtitle: "Caminhe rumo aos portões iluminados do Castelo ✨🎂",
+            question: "Qual feitiço é usado para acender uma luz brilhante na ponta da varinha?",
             options: [
                 "Lumos",
                 "Expelliarmus",
                 "Alohomora"
             ],
             correctIndex: 0,
-            wrongHint: "Esse feitiço faz outra coisa! Pense em iluminar o caminho...",
-            successMsg: "Lumos Maxima! +50 pts! Siga em frente para a grande surpresa! ✨"
+            wrongHint: "Você usou esse feitiço na Floresta Proibida!",
+            successMsg: "Lumos Maxima! Siga em frente para a grande surpresa! ✨",
+            hasPotion: false,
+            miniGame: null
         }
     ],
-
-    // Posição da chegada mágica após o 5º quiz (onde Isac invoca o bolo!)
-    finaleX: 11050,
 
     // Irmão da Helora voando na vassoura (Sonserina)
     brother: {

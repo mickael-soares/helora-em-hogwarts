@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=7">
+    <link rel="stylesheet" href="css/style.css?v=15">
 </head>
 <body>
     <div id="game-shell">
@@ -26,6 +26,7 @@
                     <span>🐍 Sonserina •</span>
                     <strong id="hud-points">0 pts</strong>
                 </div>
+                <div id="hud-felix" class="hud-pill hud-felix hidden">🧪 Sorte Líquida 2x!</div>
             </div>
             <div class="hud-right">
                 <div class="hud-pill hud-progress" aria-label="Progresso do Quiz">
@@ -43,11 +44,24 @@
 
         <!-- Controles Mobile / PC -->
         <div id="controls-bar" class="hidden">
-            <div class="controls-hint">PC: seta → ou D &nbsp;|&nbsp; Celular: segure o botão</div>
-            <button id="btn-walk" class="walk-btn" type="button">
-                <span>Andar</span>
-                <span class="walk-arrow">➜</span>
-            </button>
+            <div class="controls-hint">PC: seta → ou D &nbsp;|&nbsp; Celular: segure o botão &nbsp;|&nbsp; Toque no gatinho 🐱</div>
+            <div class="controls-actions">
+                <button id="btn-lumos" class="lumos-btn hidden" type="button">✨ Lumos!</button>
+                <button id="btn-walk" class="walk-btn" type="button">
+                    <span>Andar</span>
+                    <span class="walk-arrow">➜</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Banner de Mini-Desafio (Lumos / Caça ao Pomo) -->
+        <div id="challenge-banner" class="challenge-banner hidden"></div>
+
+        <!-- Transição Cinematográfica Entre Fases -->
+        <div id="phase-transition" class="phase-transition hidden">
+            <div class="phase-kicker" id="phase-kicker">FASE 1 DE 5</div>
+            <div class="phase-title" id="phase-title">Beco Diagonal</div>
+            <div class="phase-sub" id="phase-sub">Onde toda jornada bruxa começa ✨</div>
         </div>
 
         <!-- Tela Inicial -->
@@ -57,7 +71,7 @@
                 <p class="card-kicker">ESCOLA DE MAGIA E BRUXARIA DE HOGWARTS</p>
                 <h1 class="card-title">A Jornada Mágica da Helora</h1>
                 <p class="card-desc">
-                    Caminhe até Hogwarts respondendo <strong>5 quizzes mágicos</strong> pelo trajeto para desbloquear uma surpresa especial de aniversário!
+                    Atravesse <strong>5 cenários mágicos</strong> do Beco Diagonal até o Castelo de Hogwarts, respondendo quizzes e mini-desafios para abrir sua surpresa de aniversário!
                 </p>
                 <button id="btn-start" class="magic-btn" type="button">Começar Aventura ✨</button>
             </div>
@@ -117,9 +131,9 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
-    <script src="js/assets_data.js?v=11"></script>
-    <script src="js/quizData.js?v=11"></script>
-    <script src="js/music.js?v=11"></script>
-    <script src="js/game.js?v=11"></script>
+    <script src="js/assets_data.js?v=16"></script>
+    <script src="js/quizData.js?v=16"></script>
+    <script src="js/music.js?v=16"></script>
+    <script src="js/game.js?v=16"></script>
 </body>
 </html>
