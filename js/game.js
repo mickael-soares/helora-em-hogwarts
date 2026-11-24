@@ -4,10 +4,11 @@
     const DATA = window.HELORA_QUIZ_DATA;
     const ASSETS = window.HELORA_ASSETS;
 
-    const GAME_W = 1280;
-    const GAME_H = 720;
-    const GROUND_Y = 646;
-    const WALK_SPEED = 295;
+    const WORLD_W = DATA.worldWidth || 2560;
+    const WORLD_H = DATA.worldHeight || 1440;
+    const WALK_SPEED = 275;
+    const HELORA_SCALE = 0.44;
+    const KITTEN_SCALE = 0.38;
 
     // Web Audio API (efeitos sonoros mágicos leves, 100% offline)
     const SoundFX = {
@@ -98,19 +99,29 @@
         hud: document.getElementById("hud"),
         hudLocation: document.getElementById("hud-location"),
         hudPoints: document.getElementById("hud-points"),
+        hudNotes: document.getElementById("hud-notes"),
         hudFelix: document.getElementById("hud-felix"),
         hudCount: document.getElementById("hud-count"),
         orbs: Array.from(document.querySelectorAll("#hud .orb")),
+        btnMap: document.getElementById("btn-map"),
         btnMute: document.getElementById("btn-mute"),
         btnFullscreen: document.getElementById("btn-fullscreen"),
         controlsBar: document.getElementById("controls-bar"),
-        btnWalk: document.getElementById("btn-walk"),
+        joystickZone: document.getElementById("joystick-zone"),
+        joystickKnob: document.getElementById("joystick-knob"),
+        btnExplore: document.getElementById("btn-explore"),
         btnLumos: document.getElementById("btn-lumos"),
+        btnSprint: document.getElementById("btn-sprint"),
         challengeBanner: document.getElementById("challenge-banner"),
-        phaseTransition: document.getElementById("phase-transition"),
-        phaseKicker: document.getElementById("phase-kicker"),
-        phaseTitle: document.getElementById("phase-title"),
-        phaseSub: document.getElementById("phase-sub"),
+        mapOverlay: document.getElementById("map-overlay"),
+        mapRegions: document.getElementById("map-regions"),
+        btnCloseMap: document.getElementById("btn-close-map"),
+        noteOverlay: document.getElementById("note-overlay"),
+        noteSeal: document.getElementById("note-seal"),
+        noteTitle: document.getElementById("note-title"),
+        noteBody: document.getElementById("note-body"),
+        btnCloseNote: document.getElementById("btn-close-note"),
+        btnFreeRoam: document.getElementById("btn-free-roam"),
         introOverlay: document.getElementById("intro-overlay"),
         btnStart: document.getElementById("btn-start"),
         quizOverlay: document.getElementById("quiz-overlay"),
@@ -146,24 +157,65 @@
             if (this.hudPoints) this.hudPoints.textContent = `${pts} pts`;
         },
 
-        showPhaseTransition(stageIdx, stage, onMidpoint, onDone) {
-            this.phaseKicker.textContent = `FASE ${stageIdx + 1} DE ${DATA.quizzes.length}`;
-            this.phaseTitle.textContent = stage.location;
-            this.phaseSub.textContent = stage.subtitle || "";
-            this.phaseTransition.classList.remove("hidden");
-            requestAnimationFrame(() => {
-                this.phaseTransition.classList.add("show");
+        updateNotes(count) {
+            if (this.hudNotes) this.hudNotes.textContent = `${count}/${DATA.quizzes.length}`;
+        },
+
+        showBanner(text, autoHideMs = 0) {
+            if (!this.challengeBanner) return;
+            clearTimeout(this._bannerTimer);
+            this.challengeBanner.textContent = text;
+            this.challengeBanner.classList.remove("hidden");
+            if (autoHideMs > 0) {
+                this._bannerTimer = setTimeout(() => {
+                    this.challengeBanner.classList.add("hidden");
+                }, autoHideMs);
+            }
+        },
+
+        hideBanner() {
+            clearTimeout(this._bannerTimer);
+            if (this.challengeBanner) this.challengeBanner.classList.add("hidden");
+        },
+
+        showNoteModal(seal, title, body, onClose) {
+            SoundFX.playPopup();
+            this.noteSeal.textContent = seal || "💌";
+            this.noteTitle.textContent = title;
+            this.noteBody.textContent = body;
+            this.noteOverlay.classList.remove("hidden");
+            this.btnCloseNote.onclick = () => {
+                this.noteOverlay.classList.add("hidden");
+                if (onClose) onClose();
+            };
+        },
+
+        showMarauderMap(scene) {
+            SoundFX.playPopup();
+            this.mapRegions.innerHTML = "";
+            DATA.quizzes.forEach((region, idx) => {
+                const isCurrent = idx === scene.currentRegionIdx;
+                const quizDone = scene.solvedIds.has(region.id);
+                const noteDone = scene.foundNotes.has(region.id);
+                const row = document.createElement("button");
+                row.type = "button";
+                row.className = "map-row" + (isCurrent ? " current" : "");
+                const quizTag = quizDone ? "✓ Quiz" : "✦ Quiz";
+                const noteTag = noteDone ? "💌 Bilhete ✓" : "💌 Bilhete ?";
+                row.innerHTML = `
+                    <div>
+                        <div class="map-row-name">${isCurrent ? "👣 " : ""}${region.id}. ${region.location}</div>
+                        <div class="map-row-meta"><span>${quizTag}</span><span>${noteTag}</span></div>
+                    </div>
+                    <span>${isCurrent ? "Aqui" : "Viajar ➜"}</span>
+                `;
+                row.addEventListener("click", () => {
+                    this.mapOverlay.classList.add("hidden");
+                    scene.fastTravelTo(region);
+                });
+                this.mapRegions.appendChild(row);
             });
-            setTimeout(() => {
-                if (onMidpoint) onMidpoint();
-                setTimeout(() => {
-                    this.phaseTransition.classList.remove("show");
-                    setTimeout(() => {
-                        this.phaseTransition.classList.add("hidden");
-                        if (onDone) onDone();
-                    }, 380);
-                }, 780);
-            }, 380);
+            this.mapOverlay.classList.remove("hidden");
         },
 
         showQuiz(quiz, onSolved) {
@@ -228,7 +280,7 @@
             this.bdaySubtitle.textContent = c.subtitle;
             this.bdayMessage.innerHTML = c.message.map((p) => `<p>${p}</p>`).join("");
             if (this.bdayStats) {
-                this.bdayStats.textContent = `🏆 ${DATA.quizzes.length}/${DATA.quizzes.length} fases completas • ${housePoints} pts para a Sonserina!`;
+                this.bdayStats.textContent = `🏆 ${DATA.quizzes.length}/${DATA.quizzes.length} quizzes completos • ${housePoints} pts para a Sonserina!`;
             }
             this.bdaySignature.textContent = c.signature;
             this.cardOverlay.classList.remove("hidden");
@@ -254,38 +306,42 @@
     };
 
     const InputState = {
-        touchWalk: false,
-        canvasHoldRight: false
+        joyX: 0,
+        joyY: 0,
+        joyActive: false,
+        touchSprint: false,
+        pointerWalk: false,
+        pointerScreenX: 0,
+        pointerScreenY: 0
     };
 
-    class HogwartsJourneyScene extends Phaser.Scene {
+    class HogwartsOverworldScene extends Phaser.Scene {
         constructor() {
-            super({ key: "HogwartsJourneyScene" });
+            super({ key: "HogwartsOverworldScene" });
         }
 
         preload() {
-            // 5 Backgrounds 100% únicos e inteiros (1 por fase — sem cortar, sem duplicar!)
-            this.load.image("bg_diagon_alley", ASSETS.bg_diagon_alley);
-            this.load.image("bg_forest_rail", ASSETS.bg_forest_rail);
-            this.load.image("bg_quidditch_pitch", ASSETS.bg_quidditch_pitch);
-            this.load.image("bg_slytherin_common", ASSETS.bg_slytherin_common);
-            this.load.image("bg_hogwarts", ASSETS.bg_hogwarts);
-            this.load.image("bg_hogwarts_approach", ASSETS.bg_hogwarts_approach);
+            // Mapa Contínuo Top-Down 3/4 + Camada Superior da Ponte (para passar por BAIXO!)
+            this.load.image("overworld_map", ASSETS.overworld_map);
+            this.load.image("overworld_bridge_overlay", ASSETS.overworld_bridge_overlay);
 
-            // Personagens (Helora e Gatinho laterais 100% intactos + sprites de costas para Fase 5!)
+            // Helora nas 4 direções (100% intactos)
             this.load.image("helora_idle", ASSETS.helora_idle);
             this.load.image("helora_celebrate", ASSETS.helora_celebrate);
             this.load.spritesheet("helora_walk", ASSETS.helora_walk, { frameWidth: 256, frameHeight: 256 });
             this.load.spritesheet("helora_back_walk", ASSETS.helora_back_walk, { frameWidth: 256, frameHeight: 256 });
-            this.load.image("isac_broom", ASSETS.isac_broom);
+            this.load.spritesheet("helora_front_walk", ASSETS.helora_front_walk, { frameWidth: 256, frameHeight: 256 });
+
+            // Gatinho nas 4 direções (todos com 4 frames fluidos!)
             this.load.image("kitten_idle", ASSETS.kitten_idle);
             this.load.spritesheet("kitten_walk", ASSETS.kitten_walk, { frameWidth: 144, frameHeight: 128 });
-            this.load.image("kitten_back", ASSETS.kitten_back);
+            this.load.spritesheet("kitten_back_walk", ASSETS.kitten_back_walk, { frameWidth: 128, frameHeight: 128 });
+            this.load.spritesheet("kitten_front_walk", ASSETS.kitten_front_walk, { frameWidth: 128, frameHeight: 128 });
 
-            // Props e coletáveis
+            // Isac & Props
+            this.load.image("isac_broom", ASSETS.isac_broom);
             this.load.image("decor_star", ASSETS.decor_star);
             this.load.image("decor_potion", ASSETS.decor_potion);
-            this.load.image("mid_train", ASSETS.mid_train);
             this.load.image("prop_platform", ASSETS.prop_platform);
             this.load.image("prop_owl", ASSETS.prop_owl);
             this.load.image("prop_snitch", ASSETS.prop_snitch);
@@ -295,22 +351,142 @@
         }
 
         create() {
-            this.state = "INTRO"; // INTRO | WALKING | QUIZ | SNITCH_HUNT | CELEBRATE | TRANSITION | FINALE
-            this.stageIdx = 0;
-            this.stageWidth = 2250;
+            this.state = "INTRO"; // INTRO | WALKING | QUIZ | SNITCH_HUNT | MODAL | CELEBRATE | FINALE
+            this.currentRegionIdx = 0;
             this.solvedIds = new Set();
+            this.foundNotes = new Set();
             this.housePoints = 0;
-            this.walkPhase = 0;
-            this.playerVel = 0;
-            this.particleTimer = 0;
-            this.stepDustTimer = 0;
-            this.shootingStarTimer = 3.5;
+            this.finaleDone = false;
+            this.lumosActive = false;
+            this.lumosSolved = false;
+            this.snitchSolved = false;
+            this.snitchHits = 0;
             this.felixTimer = 0;
             this.lastPetTime = 0;
-            this.stageObjects = [];
-            this.stageTweens = [];
+            this.velX = 0;
+            this.velY = 0;
+            this.facing = "right";
+            this.walkPhase = 0;
+            this.stepDustTimer = 0;
+            this.particleTimer = 0;
+            this.activeInteractable = null;
 
-            // Texturas auxiliares de brilho suave
+            this.createHelperTextures();
+            this.createAnimations();
+
+            // 1. Mapa Único Top-Down 3/4 (2560 x 1440)
+            this.mapBg = this.add.image(WORLD_W / 2, WORLD_H / 2, "overworld_map")
+                .setDisplaySize(WORLD_W, WORLD_H)
+                .setDepth(0);
+
+            // Camada superior do arco da ponte (fica ACIMA da Helora e do gatinho para passarem por BAIXO!)
+            this.bridgeOverlay = this.add.image(1920, 906.67, "overworld_bridge_overlay")
+                .setOrigin(0, 0)
+                .setDisplaySize(640, 533.33)
+                .setDepth(11.6);
+
+            // Overlay escuro do mini-desafio Lumos (cobre o vale quando Helora entra na clareira)
+            this.darknessOverlay = this.add.rectangle(WORLD_W / 2, WORLD_H / 2, WORLD_W, WORLD_H, 0x040712, 0)
+                .setDepth(14);
+
+            // 2. Vagalumes mágicos espalhados por todo o vale
+            this.ambientFireflies = [];
+            for (let i = 0; i < 42; i++) {
+                const fx = Phaser.Math.Between(120, WORLD_W - 120);
+                const fy = Phaser.Math.Between(220, WORLD_H - 90);
+                const dot = this.add.image(fx, fy, "sparkle_dot")
+                    .setTint(i % 2 === 0 ? 0x52f29b : 0xffe484)
+                    .setScale(Phaser.Math.FloatBetween(0.24, 0.52))
+                    .setAlpha(Phaser.Math.FloatBetween(0.25, 0.72))
+                    .setDepth(2.5);
+                dot.baseY = fy;
+                dot.phase = Math.random() * Math.PI * 2;
+                dot.speed = Phaser.Math.FloatBetween(0.8, 1.8);
+                this.ambientFireflies.push(dot);
+            }
+
+            // 3. Construir todos os elementos do Mundo Aberto
+            this.buildOpenWorldContent();
+
+            // 4. Gatinho Laranjinha (interativo para carinho!)
+            const sx = DATA.startPos.x;
+            const sy = DATA.startPos.y;
+            this.kittenShadow = this.add.ellipse(sx - 68, sy + 6, 36, 12, 0x080716, 0.4).setDepth(3.5);
+            this.kitten = this.add.sprite(sx - 68, sy + 6, "kitten_idle")
+                .setOrigin(0.5, 0.92)
+                .setScale(KITTEN_SCALE)
+                .setDepth(5 + (sy + 6) / 1000);
+            this.kitten.setInteractive({ useHandCursor: true });
+            this.kitten.on("pointerdown", () => this.petKitten());
+
+            // Aura Felix Felicis
+            this.felixAura = this.add.image(sx, sy - 42, "soft_glow")
+                .setTint(0xffe066)
+                .setScale(1.15)
+                .setAlpha(0)
+                .setDepth(4.5);
+
+            // 5. Helora (Protagonista)
+            this.playerShadow = this.add.ellipse(sx, sy, 52, 16, 0x080716, 0.46).setDepth(3.5);
+            this.player = this.add.sprite(sx, sy, "helora_idle")
+                .setOrigin(0.5, 0.92)
+                .setScale(HELORA_SCALE)
+                .setDepth(5 + sy / 1000);
+
+            // 6. Isac voando no céu do vale
+            this.isacBgDir = 1;
+            this.isacBg = this.add.image(-120, 260, "isac_broom")
+                .setScale(0.28)
+                .setAlpha(0.92)
+                .setDepth(13);
+            this.isacBgTrailTimer = 0;
+
+            // 7. Controles de Teclado + Toque direto no mapa
+            this.cursors = this.input.keyboard.createCursorKeys();
+            this.keyW = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
+            this.keyA = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
+            this.keyS = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S);
+            this.keyD = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
+            this.keyE = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
+            this.keyM = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M);
+            this.keyL = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.L);
+            this.keyShift = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT);
+
+            this.input.on("pointerdown", (pointer, currentlyOver) => {
+                if (currentlyOver && currentlyOver.length > 0) return;
+                if (this.state === "WALKING" && !InputState.joyActive) {
+                    SoundFX.unlock();
+                    InputState.pointerWalk = true;
+                    InputState.pointerScreenX = pointer.x;
+                    InputState.pointerScreenY = pointer.y;
+                }
+            });
+            this.input.on("pointermove", (pointer) => {
+                if (InputState.pointerWalk) {
+                    InputState.pointerScreenX = pointer.x;
+                    InputState.pointerScreenY = pointer.y;
+                }
+            });
+            this.input.on("pointerup", () => { InputState.pointerWalk = false; });
+            this.input.on("pointerupoutside", () => { InputState.pointerWalk = false; });
+
+            // 8. Câmera 360° seguindo Helora no mundo 2560x1440
+            const cam = this.cameras.main;
+            cam.setBounds(0, 0, WORLD_W, WORLD_H);
+            cam.startFollow(this.player, true, 0.1, 0.1);
+            this.applyResponsiveCamera(this.scale.width, this.scale.height);
+            this.scale.on("resize", (gameSize) => {
+                this.applyResponsiveCamera(gameSize.width, gameSize.height);
+            });
+
+            UI.updateProgress(0, DATA.quizzes[0].location);
+            UI.updatePoints(0);
+            UI.updateNotes(0);
+
+            window.__heloraScene = this;
+        }
+
+        createHelperTextures() {
             if (!this.textures.exists("sparkle_dot")) {
                 const g = this.make.graphics({ x: 0, y: 0, add: false });
                 g.fillStyle(0xffffff, 1);
@@ -331,1017 +507,1055 @@
                 g.generateTexture("soft_glow", 96, 96);
                 g.destroy();
             }
+        }
 
-            // 1. Background Único e Inteiro da Fase Atual (sempre 100% íntegro, sem corte/emenda!)
-            this.stageBg = this.add.image(GAME_W / 2, GAME_H / 2, DATA.quizzes[0].bgKey);
-            this.stageBg.setDepth(0);
-
-            // Overlay escuro exclusivo do mini-desafio Lumos (Fase 2)
-            this.darknessOverlay = this.add.rectangle(GAME_W / 2, GAME_H / 2, 2600, GAME_H, 0x040712, 0).setDepth(12.5);
-
-            // 2. Isac voando no céu (somente nas fases externas!)
-            this.isacBgDir = 1;
-            this.isacBgRelX = -120;
-            this.isacBgTrailTimer = 0;
-            this.isacBg = this.add.image(100, 148, "isac_broom").setScale(0.36).setAlpha(0.94).setDepth(1);
-
-            // 3. Animações da Helora e do Gatinho (100% intactas!)
-            if (!this.anims.exists("kitten_walk_anim")) {
-                this.anims.create({
-                    key: "kitten_walk_anim",
-                    frames: this.anims.generateFrameNumbers("kitten_walk", { start: 0, end: 3 }),
-                    frameRate: 9,
-                    repeat: -1
-                });
-            }
+        createAnimations() {
             if (!this.anims.exists("helora_walk_anim")) {
                 this.anims.create({
                     key: "helora_walk_anim",
                     frames: this.anims.generateFrameNumbers("helora_walk", { start: 0, end: 3 }),
-                    frameRate: 7,
+                    frameRate: 8,
                     repeat: -1
                 });
             }
             if (!this.anims.exists("helora_back_anim")) {
                 this.anims.create({
                     key: "helora_back_anim",
-                    frames: this.anims.generateFrameNumbers("helora_back_walk", { start: 0, end: 1 }),
-                    frameRate: 5.5,
+                    frames: this.anims.generateFrameNumbers("helora_back_walk", { start: 0, end: 3 }),
+                    frameRate: 7.5,
                     repeat: -1
                 });
             }
+            if (!this.anims.exists("helora_front_anim")) {
+                this.anims.create({
+                    key: "helora_front_anim",
+                    frames: this.anims.generateFrameNumbers("helora_front_walk", { start: 0, end: 1 }),
+                    frameRate: 6.5,
+                    repeat: -1
+                });
+            }
+            if (!this.anims.exists("kitten_walk_anim")) {
+                this.anims.create({
+                    key: "kitten_walk_anim",
+                    frames: this.anims.generateFrameNumbers("kitten_walk", { start: 0, end: 3 }),
+                    frameRate: 9.5,
+                    repeat: -1
+                });
+            }
+            if (!this.anims.exists("kitten_back_anim")) {
+                this.anims.create({
+                    key: "kitten_back_anim",
+                    frames: this.anims.generateFrameNumbers("kitten_back_walk", { start: 0, end: 3 }),
+                    frameRate: 9,
+                    repeat: -1
+                });
+            }
+            if (!this.anims.exists("kitten_front_anim")) {
+                this.anims.create({
+                    key: "kitten_front_anim",
+                    frames: this.anims.generateFrameNumbers("kitten_front_walk", { start: 0, end: 3 }),
+                    frameRate: 9,
+                    repeat: -1
+                });
+            }
+        }
 
-            // Gatinho Laranjinha (interativo para carinho!)
-            this.kittenShadow = this.add.ellipse(95, GROUND_Y - 2, 54, 12, 0x080716, 0.36).setDepth(8);
-            this.kitten = this.add.sprite(95, GROUND_Y - 2, "kitten_idle").setOrigin(0.5, 1).setScale(0.74).setDepth(10);
-            this.kitten.setInteractive({ useHandCursor: true });
-            this.kitten.on("pointerdown", () => this.petKitten());
+        buildOpenWorldContent() {
+            this.collectibleStars = [];
+            this.potions = [];
+            this.checkpoints = [];
+            this.interactables = [];
 
-            // Aura dourada da Poção Felix Felicis
-            this.felixAura = this.add.image(210, GROUND_Y - 95, "soft_glow").setTint(0xffe066).setScale(2.1).setAlpha(0).setDepth(9);
+            // 1. Estrelas mágicas nas estradas de pedra
+            DATA.stars.forEach((pt, i) => {
+                const star = this.add.image(pt.x, pt.y, "decor_star")
+                    .setScale(0.56)
+                    .setDepth(5 + pt.y / 1000);
+                this.tweens.add({
+                    targets: star,
+                    y: pt.y - 8,
+                    scale: 0.64,
+                    duration: 900 + (i % 5) * 110,
+                    yoyo: true,
+                    repeat: -1,
+                    ease: "Sine.easeInOut"
+                });
+                this.collectibleStars.push({ sprite: star, x: pt.x, y: pt.y, collected: false, secret: false });
+            });
 
-            // Helora
-            this.playerShadow = this.add.ellipse(210, GROUND_Y - 4, 96, 22, 0x080716, 0.42).setDepth(8);
-            this.player = this.add.sprite(210, GROUND_Y, "helora_idle").setOrigin(0.5, 1).setScale(0.92).setDepth(10);
+            // 2. 3 Estrelas secretas do Lumos na Floresta Proibida
+            DATA.lumosStars.forEach((pt, i) => {
+                const star = this.add.image(pt.x, pt.y, "decor_star")
+                    .setScale(0.64)
+                    .setVisible(false)
+                    .setAlpha(0)
+                    .setDepth(5 + pt.y / 1000);
+                this.tweens.add({
+                    targets: star,
+                    y: pt.y - 10,
+                    duration: 850 + i * 95,
+                    yoyo: true,
+                    repeat: -1,
+                    ease: "Sine.easeInOut"
+                });
+                this.collectibleStars.push({ sprite: star, x: pt.x, y: pt.y, collected: false, secret: true });
+            });
 
-            // Controles
-            this.cursors = this.input.keyboard.createCursorKeys();
-            this.keyD = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
-            this.keyA = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
-            this.keyW = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
-            this.keyL = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.L);
-            this.keySpace = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+            // 3. Poções Felix Felicis
+            DATA.potions.forEach((p) => {
+                const glow = this.add.image(p.x, p.y, "soft_glow")
+                    .setTint(0xffe066)
+                    .setScale(0.55)
+                    .setAlpha(0.58)
+                    .setDepth(4.8 + p.y / 1000);
+                const vial = this.add.image(p.x, p.y, "decor_potion")
+                    .setScale(0.58)
+                    .setDepth(5 + p.y / 1000);
+                this.tweens.add({
+                    targets: [vial, glow],
+                    y: p.y - 9,
+                    duration: 950,
+                    yoyo: true,
+                    repeat: -1,
+                    ease: "Sine.easeInOut"
+                });
+                this.potions.push({ sprite: vial, glow, x: p.x, y: p.y, collected: false });
+            });
 
-            this.input.on("pointerdown", (pointer, currentlyOver) => {
-                if (currentlyOver && currentlyOver.length > 0) return; // Não andar quando tocar no gatinho ou Pomo!
-                if (this.state === "WALKING" && pointer.x > this.scale.width * 0.35) {
-                    InputState.canvasHoldRight = true;
+            // 4. 5 Checkpoints de Quiz, 5 Bilhetes Secretos e Pontos de Exploração
+            DATA.quizzes.forEach((region) => {
+                const qx = region.quizPos.x;
+                const qy = region.quizPos.y;
+
+                const glow = this.add.image(qx, qy, "soft_glow")
+                    .setTint(0x52f29b)
+                    .setScale(0.85, 0.45)
+                    .setAlpha(0.55)
+                    .setDepth(4.5 + qy / 1000);
+
+                const propScale = region.propKey === "prop_snitch" ? 0.34 : 0.42;
+                const prop = this.add.image(qx, qy - 8, region.propKey)
+                    .setOrigin(0.5, 0.85)
+                    .setScale(propScale)
+                    .setDepth(5 + qy / 1000);
+                this.tweens.add({
+                    targets: prop,
+                    y: qy - 16,
+                    duration: 1100,
+                    yoyo: true,
+                    repeat: -1,
+                    ease: "Sine.easeInOut"
+                });
+
+                const marker = this.add.text(qx, qy - 68, `✦ Quiz ${region.id} • ${region.location}`, {
+                    fontFamily: "Cinzel, serif",
+                    fontSize: "15px",
+                    fontStyle: "bold",
+                    color: "#fff3c4",
+                    backgroundColor: "rgba(13, 43, 29, 0.88)",
+                    padding: { x: 9, y: 4 }
+                }).setOrigin(0.5).setDepth(12);
+                this.tweens.add({
+                    targets: marker,
+                    y: qy - 74,
+                    duration: 1000,
+                    yoyo: true,
+                    repeat: -1,
+                    ease: "Sine.easeInOut"
+                });
+
+                this.checkpoints.push({ quiz: region, x: qx, y: qy, prop, glow, marker, solved: false });
+
+                // Bilhete Secreto
+                if (region.secretNote) {
+                    const nx = region.secretNote.x;
+                    const ny = region.secretNote.y;
+                    const nglow = this.add.image(nx, ny, "soft_glow")
+                        .setTint(0xffe680)
+                        .setScale(0.5)
+                        .setAlpha(0.6)
+                        .setDepth(4.6 + ny / 1000);
+                    const nicon = this.add.text(nx, ny, "💌", { fontSize: "24px" })
+                        .setOrigin(0.5)
+                        .setDepth(5.2 + ny / 1000);
+                    this.tweens.add({
+                        targets: [nicon, nglow],
+                        y: ny - 9,
+                        duration: 920,
+                        yoyo: true,
+                        repeat: -1,
+                        ease: "Sine.easeInOut"
+                    });
+                    this.interactables.push({
+                        type: "note",
+                        regionId: region.id,
+                        x: nx,
+                        y: ny,
+                        sprite: nicon,
+                        glow: nglow,
+                        label: "💌 Ler Bilhete Secreto",
+                        data: region.secretNote,
+                        done: false
+                    });
+                }
+
+                // Pontos de Exploração
+                if (region.exploreSpots) {
+                    region.exploreSpots.forEach((spot) => {
+                        const badge = this.add.text(spot.x, spot.y - 26, spot.label, {
+                            fontFamily: "Nunito, sans-serif",
+                            fontSize: "13px",
+                            fontStyle: "bold",
+                            color: "#fff5d6",
+                            backgroundColor: "rgba(18, 36, 46, 0.82)",
+                            padding: { x: 8, y: 4 }
+                        }).setOrigin(0.5).setDepth(11.5);
+                        this.tweens.add({
+                            targets: badge,
+                            y: spot.y - 32,
+                            duration: 1100,
+                            yoyo: true,
+                            repeat: -1,
+                            ease: "Sine.easeInOut"
+                        });
+                        this.interactables.push({
+                            type: "spot",
+                            regionId: region.id,
+                            x: spot.x,
+                            y: spot.y,
+                            sprite: badge,
+                            label: `✨ ${spot.label}`,
+                            data: spot,
+                            done: false
+                        });
+                    });
                 }
             });
-            this.input.on("pointerup", () => { InputState.canvasHoldRight = false; });
-            this.input.on("pointerupoutside", () => { InputState.canvasHoldRight = false; });
 
-            // Carregar Fase 1 (Beco Diagonal)
-            this.loadStage(0);
-
-            // Câmera responsiva (100% tela cheia PC + Celular retrato/paisagem)
-            this.applyResponsiveCamera(this.scale.width, this.scale.height);
-            this.scale.on("resize", (gameSize) => {
-                this.applyResponsiveCamera(gameSize.width, gameSize.height);
+            // 5. Pátio da Grande Surpresa (Hogwarts Courtyard — Bolo INVISÍVEL até Isac conjurar!)
+            const fx = DATA.finalePos.x;
+            const fy = DATA.finalePos.y;
+            this.finaleGlow = this.add.image(fx, fy, "soft_glow")
+                .setTint(0x52f29b)
+                .setScale(1.3, 0.55)
+                .setAlpha(0.25)
+                .setDepth(4.2);
+            this.tweens.add({
+                targets: this.finaleGlow,
+                scaleX: 1.55,
+                duration: 1100,
+                yoyo: true,
+                repeat: -1,
+                ease: "Sine.easeInOut"
             });
 
-            window.__heloraScene = this;
-        }
+            this.finaleLabel = this.add.text(fx, fy - 42, "🎂 Pátio da Surpresa (0/5 quizzes)", {
+                fontFamily: "Cinzel, serif",
+                fontSize: "14px",
+                fontStyle: "bold",
+                color: "#d9e8dc",
+                backgroundColor: "rgba(13, 43, 29, 0.82)",
+                padding: { x: 10, y: 4 }
+            }).setOrigin(0.5).setDepth(12);
 
-        trackObj(obj) {
-            this.stageObjects.push(obj);
-            return obj;
-        }
-
-        clearStageObjects() {
-            this.stageTweens.forEach((tw) => tw && tw.stop && tw.stop());
-            this.stageTweens = [];
-            this.stageObjects.forEach((obj) => {
-                if (obj && obj.destroy) obj.destroy();
-            });
-            this.stageObjects = [];
-            if (this.huntSnitch) {
-                this.huntSnitch.destroy();
-                this.huntSnitch = null;
-            }
-            if (this.isacHero) {
-                this.isacHero.destroy();
-                this.isacHero = null;
-            }
-            this.trainRig = null;
-            this.cakeSprite = null;
-            this.finaleGlow = null;
-            this.finaleMarker = null;
-            this.exitMarker = null;
-            this.checkpoint = null;
-            this.collectibleStars = [];
-            this.stagePotion = null;
-            this.ambientFireflies = [];
-        }
-
-        loadStage(idx) {
-            this.clearStageObjects();
-            this.stageIdx = idx;
-            const stage = DATA.quizzes[idx];
-            this.currentStage = stage;
-            this.isPerspective = !!stage.perspectiveMode;
-            this.depthProgress = 0;
-            this.depthVel = 0;
-            this.stageWidth = this.isPerspective ? GAME_W : 2200;
-            this.stageQuizSolved = false;
-            this.lumosActive = false;
-            this.lumosSolved = false;
-            this.snitchSolved = false;
-            this.snitchHits = 0;
-
-            UI.btnLumos.classList.add("hidden");
-            UI.challengeBanner.classList.add("hidden");
-            this.darknessOverlay.setAlpha(0);
-
-            // Configurar o background único e inteiro desta fase!
-            this.stageBg.setTexture(stage.bgKey);
-            this.cameras.main.setBounds(0, 0, this.stageWidth, GAME_H);
-
-            // Isac voando no céu apenas em fases ao ar livre (fica fora da Sala Comunal!)
-            this.isacBg.setVisible(!stage.indoor);
-            this.isacBgRelX = -120;
-            this.isacBgDir = 1;
-            this.isacBg.setFlipX(false);
-
-            // 1. Vagalumes mágicos sutis
-            for (let i = 0; i < 18; i++) {
-                const fx = Phaser.Math.Between(120, this.stageWidth - 120);
-                const fy = Phaser.Math.Between(100, 540);
-                const dot = this.trackObj(this.add.image(fx, fy, "sparkle_dot")
-                    .setTint(i % 2 === 0 ? 0x52f29b : 0xffe484)
-                    .setScale(Phaser.Math.FloatBetween(0.26, 0.56))
-                    .setAlpha(Phaser.Math.FloatBetween(0.28, 0.78))
-                    .setDepth(3));
-                dot.baseY = fy;
-                dot.phase = Math.random() * Math.PI * 2;
-                dot.speed = Phaser.Math.FloatBetween(0.8, 1.8);
-                this.ambientFireflies.push(dot);
-            }
-
-            // === FASE 5 EM PERSPECTIVA 2.5D "DE COSTAS" ENTRANDO EM HOGWARTS ===
-            if (this.isPerspective) {
-                this.playerVel = 0;
-                this.player.anims.stop();
-                this.player.setPosition(GAME_W / 2 + 24, 686).setTexture("helora_back_walk", 0).setFlipX(false).setAngle(0).setScale(1.02);
-                this.playerShadow.setPosition(GAME_W / 2 + 24, 682).setScale(1);
-
-                this.kitten.anims.stop();
-                this.kitten.setPosition(GAME_W / 2 - 86, 690).setTexture("kitten_back").setFlipX(false).setAngle(0).setScale(0.84);
-                this.kittenShadow.setPosition(GAME_W / 2 - 86, 686).setScale(1);
-
-                // 3 Estrelas coletáveis ao longo da estrada em perspectiva!
-                [0.24, 0.44, 0.60].forEach((prog, i) => {
-                    const sy = Phaser.Math.Linear(640, 470, prog);
-                    const sScale = Phaser.Math.Linear(0.95, 0.52, prog);
-                    const star = this.trackObj(this.add.image(GAME_W / 2, sy, "decor_star").setScale(sScale).setDepth(6));
-                    this.stageTweens.push(this.tweens.add({
-                        targets: star, y: sy - 10, duration: 900 + i * 110, yoyo: true, repeat: -1, ease: "Sine.easeInOut"
-                    }));
-                    this.collectibleStars.push({ sprite: star, collected: false, progressTarget: prog, baseX: GAME_W / 2, baseY: sy });
-                });
-
-                // Marcador do 5º Quiz no Portão de Hogwarts
-                const marker = this.trackObj(this.add.text(GAME_W / 2, 398, `✦ Quiz 5 • Portão de Hogwarts ✦`, {
-                    fontFamily: "Cinzel, serif", fontSize: "19px", fontStyle: "bold",
-                    color: "#fff3c4", backgroundColor: "rgba(13, 43, 29, 0.88)", padding: { x: 12, y: 5 }
-                }).setOrigin(0.5).setDepth(7));
-                this.stageTweens.push(this.tweens.add({
-                    targets: marker, y: 390, duration: 1000, yoyo: true, repeat: -1, ease: "Sine.easeInOut"
-                }));
-                this.checkpoint = { quiz: stage, worldX: GAME_W / 2, sprite: null, marker };
-
-                // Chegada Mágica + Bolo Invisível (invocado pela magia do Isac em frente ao Castelo!)
-                this.finaleX = GAME_W / 2;
-                this.finaleGlow = this.trackObj(this.add.image(GAME_W / 2, 530, "soft_glow")
-                    .setTint(0x52f29b).setScale(1.6, 0.5).setAlpha(0.75).setDepth(4));
-                this.stageTweens.push(this.tweens.add({
-                    targets: this.finaleGlow, alpha: 0.35, scaleX: 1.9, duration: 1100, yoyo: true, repeat: -1, ease: "Sine.easeInOut"
-                }));
-
-                this.cakeSprite = this.trackObj(this.add.image(GAME_W / 2, 540, "prop_cake")
-                    .setOrigin(0.5, 1).setScale(0.1).setAlpha(0).setDepth(11));
-
-                UI.updateProgress(this.solvedIds.size, `Fase 5/5 • ${stage.location}`);
-                this.applyResponsiveCamera(this.scale.width, this.scale.height);
-                return;
-            }
-
-            // === FASES 1–4: SIDE-SCROLLER 2.5D PROFUNDO ===
-            this.playerVel = 0;
-            this.player.anims.stop();
-            this.player.setPosition(200, GROUND_Y).setTexture("helora_idle").setFlipX(false).setAngle(0).setScale(0.92);
-            this.playerShadow.setPosition(200, GROUND_Y - 4).setScale(1);
-
-            this.kitten.anims.stop();
-            this.kitten.setPosition(90, GROUND_Y - 2).setTexture("kitten_idle").setFlipX(false).setAngle(0).setScale(0.74);
-            this.kittenShadow.setPosition(90, GROUND_Y - 2).setScale(1);
-
-            // Camada de primeiro plano (1.28x) — vaga-lumes dourados/esmeralda passando na frente da estrada!
-            for (let gx = 160; gx < this.stageWidth * 1.28; gx += 320) {
-                const gy = GAME_H - Phaser.Math.Between(22, 84);
-                const orb = this.trackObj(this.add.image(gx, gy, "sparkle_dot")
-                    .setScrollFactor(1.28, 0)
-                    .setTint(gx % 2 === 0 ? 0x52f29b : 0xffe484)
-                    .setScale(Phaser.Math.FloatBetween(0.45, 0.85))
-                    .setAlpha(0.62)
-                    .setDepth(14));
-                this.stageTweens.push(this.tweens.add({
-                    targets: orb, y: gy - 18, alpha: 0.22, duration: 1500 + (gx % 500), yoyo: true, repeat: -1, ease: "Sine.easeInOut"
-                }));
-            }
-
-            // 2. Expresso de Hogwarts animado (exclusivo da Fase 2 — sobre o viaduto de pedra!)
-            if (stage.hasTrain) {
-                this.buildAnimatedTrain(442);
-            }
-
-            // 3. Estrelas coletáveis da fase
-            const starXs = [460, 740, 1020, 1280];
-            starXs.forEach((sx, i) => {
-                const sy = GROUND_Y - 94 - (i % 2) * 24;
-                const star = this.trackObj(this.add.image(sx, sy, "decor_star").setScale(0.84).setDepth(6));
-                this.stageTweens.push(this.tweens.add({
-                    targets: star, y: sy - 12, scale: 0.94, duration: 900 + i * 100, yoyo: true, repeat: -1, ease: "Sine.easeInOut"
-                }));
-                this.collectibleStars.push({ sprite: star, collected: false, baseX: sx, baseY: sy, secret: false });
-            });
-
-            // Estrelas secretas do Lumos (Fase 2)
-            if (stage.miniGame === "lumos") {
-                [880, 1120, 1340].forEach((sx, i) => {
-                    const sy = GROUND_Y - 126 - (i % 2) * 22;
-                    const star = this.trackObj(this.add.image(sx, sy, "decor_star").setScale(0.92).setVisible(false).setAlpha(0).setDepth(6));
-                    this.stageTweens.push(this.tweens.add({
-                        targets: star, y: sy - 14, duration: 850 + i * 90, yoyo: true, repeat: -1, ease: "Sine.easeInOut"
-                    }));
-                    this.collectibleStars.push({ sprite: star, collected: false, baseX: sx, baseY: sy, secret: true });
-                });
-            }
-
-            // 4. Poção Felix Felicis (Fases 2 e 4)
-            if (stage.hasPotion) {
-                const px = 610;
-                const py = GROUND_Y - 108;
-                const glow = this.trackObj(this.add.image(px, py, "soft_glow").setTint(0xffe066).setScale(0.85).setAlpha(0.55).setDepth(5.5));
-                const vial = this.trackObj(this.add.image(px, py, "decor_potion").setScale(0.92).setDepth(6));
-                this.stageTweens.push(this.tweens.add({
-                    targets: [vial, glow], y: py - 14, duration: 950, yoyo: true, repeat: -1, ease: "Sine.easeInOut"
-                }));
-                this.stagePotion = { sprite: vial, glow, collected: false, baseX: px, baseY: py };
-            }
-
-            // 5. Checkpoint do Quiz da Fase
-            const quizX = stage.isFinaleStage ? 1480 : 1560;
-            const isSnitchProp = stage.propKey === "prop_snitch";
-            const propY = isSnitchProp ? GROUND_Y - 128 : GROUND_Y - 12;
-            const propSprite = this.trackObj(this.add.image(quizX, propY, stage.propKey).setOrigin(0.5, isSnitchProp ? 0.5 : 1).setDepth(5));
-            if (isSnitchProp) {
-                this.stageTweens.push(this.tweens.add({
-                    targets: propSprite, y: propY - 22, duration: 1150, yoyo: true, repeat: -1, ease: "Sine.easeInOut"
-                }));
-            }
-
-            const markerY = isSnitchProp ? propY - 90 : propY - propSprite.displayHeight - 16;
-            const marker = this.trackObj(this.add.text(quizX, markerY, `✦ Quiz ${stage.id} ✦`, {
-                fontFamily: "Cinzel, serif", fontSize: "19px", fontStyle: "bold",
-                color: "#fff3c4", backgroundColor: "rgba(13, 43, 29, 0.86)", padding: { x: 10, y: 5 }
-            }).setOrigin(0.5).setDepth(7));
-            this.stageTweens.push(this.tweens.add({
-                targets: marker, y: markerY - 8, duration: 1000, yoyo: true, repeat: -1, ease: "Sine.easeInOut"
-            }));
-
-            this.checkpoint = { quiz: stage, worldX: quizX, sprite: propSprite, marker };
-
-            // 6. Saída para Próxima Fase (Fases 1–4) OU Chegada Mágica + Bolo Invisível (Fase 5)
-            if (!stage.isFinaleStage) {
-                const exitX = 2040;
-                this.exitX = exitX;
-                this.exitMarker = this.trackObj(this.add.text(exitX, GROUND_Y - 130, `➜ Fase ${stage.id + 1}`, {
-                    fontFamily: "Cinzel, serif", fontSize: "20px", fontStyle: "bold",
-                    color: "#7affb2", backgroundColor: "rgba(13, 43, 29, 0.86)", padding: { x: 12, y: 6 }
-                }).setOrigin(0.5).setDepth(7).setAlpha(0.35));
-                this.stageTweens.push(this.tweens.add({
-                    targets: this.exitMarker, x: exitX + 10, duration: 850, yoyo: true, repeat: -1, ease: "Sine.easeInOut"
-                }));
-            } else {
-                this.finaleX = 2220;
-                // Tapete verde/dourado da Sonserina na chegada final
-                this.trackObj(this.add.rectangle(2020, GROUND_Y - 12, 760, 30, 0x145232, 0.88).setDepth(3));
-                this.trackObj(this.add.rectangle(2020, GROUND_Y - 26, 760, 3, 0xe6c267, 0.95).setDepth(3));
-                this.trackObj(this.add.rectangle(2020, GROUND_Y + 2, 760, 3, 0xe6c267, 0.95).setDepth(3));
-
-                this.finaleGlow = this.trackObj(this.add.image(this.finaleX, GROUND_Y - 18, "soft_glow")
-                    .setTint(0x52f29b).setScale(1.8, 0.55).setAlpha(0.75).setDepth(4));
-                this.stageTweens.push(this.tweens.add({
-                    targets: this.finaleGlow, alpha: 0.35, scaleX: 2.1, duration: 1100, yoyo: true, repeat: -1, ease: "Sine.easeInOut"
-                }));
-
-                // Bolo começa INVISÍVEL (invocado pela magia do Isac!)
-                this.cakeSprite = this.trackObj(this.add.image(this.finaleX, GROUND_Y - 12, "prop_cake")
-                    .setOrigin(0.5, 1).setScale(0.1).setAlpha(0).setDepth(6));
-
-                this.finaleMarker = this.trackObj(this.add.text(this.finaleX, GROUND_Y - 135, "✨ Chegada Mágica ✨", {
-                    fontFamily: "Cinzel, serif", fontSize: "21px", fontStyle: "bold",
-                    color: "#ffe680", backgroundColor: "rgba(13, 43, 29, 0.86)", padding: { x: 12, y: 6 }
-                }).setOrigin(0.5).setDepth(7));
-                this.stageTweens.push(this.tweens.add({
-                    targets: this.finaleMarker, y: this.finaleMarker.y - 10, duration: 950, yoyo: true, repeat: -1, ease: "Sine.easeInOut"
-                }));
-            }
-
-            UI.updateProgress(this.solvedIds.size, `Fase ${stage.id}/5 • ${stage.location}`);
-            this.applyResponsiveCamera(this.scale.width, this.scale.height);
+            this.cakeSprite = this.add.image(fx, fy - 12, "prop_cake")
+                .setOrigin(0.5, 0.9)
+                .setScale(0.08)
+                .setAlpha(0)
+                .setDepth(5.1 + fy / 1000);
         }
 
         applyResponsiveCamera(screenW, screenH) {
             const cam = this.cameras.main;
-            const zoom = Math.max(0.42, screenH / GAME_H);
+            const zoom = Phaser.Math.Clamp(Math.min(screenW / 980, screenH / 580), 0.58, 1.32);
             cam.setZoom(zoom);
-            const viewW = screenW / zoom;
-
-            if (this.isPerspective) {
-                cam.stopFollow();
-                cam.centerOn(GAME_W / 2, GAME_H / 2);
-                this.bgDisplayW = Math.max(Math.ceil(viewW) + 80, GAME_W);
-                this.stageBg.setDisplaySize(this.bgDisplayW, GAME_H);
-                this.stageBg.setPosition(GAME_W / 2, GAME_H / 2);
-            } else {
-                const offsetX = viewW < 640 ? -24 : -Math.min(200, Math.round(viewW * 0.16));
-                cam.startFollow(this.player, true, 0.08, 0.08, offsetX, 0);
-                cam.centerOn(this.player.x - offsetX, GAME_H / 2);
-                this.bgDisplayW = Math.max(Math.ceil(viewW) + 260, 1580);
-                this.stageBg.setDisplaySize(this.bgDisplayW, GAME_H);
-            }
-            if (this.darknessOverlay) this.darknessOverlay.setSize(Math.ceil(viewW) + 160, GAME_H);
-        }
-
-        buildAnimatedTrain(baseY) {
-            this.trainBaseY = baseY;
-            this.trainRelX = -180;
-            this.trainWheelAngle = 0;
-            this.trainSmokeTimer = 0;
-
-            this.trainRig = this.trackObj(this.add.container(0, baseY).setScale(0.70).setDepth(1.4));
-            this.trainBody = this.add.image(0, 0, "mid_train").setOrigin(0.5, 1).setFlipX(true);
-            this.trainMechGfx = this.add.graphics();
-            this.trainRig.add([this.trainBody, this.trainMechGfx]);
-        }
-
-        updateAnimatedTrain(time, dt) {
-            if (!this.trainRig || !this.trainRig.active) return;
-
-            const bgLeft = this.stageBg.x - this.bgDisplayW / 2 + 80;
-            const bgRight = this.stageBg.x + this.bgDisplayW / 2 - 80;
-            const trackSpan = bgRight - bgLeft;
-
-            this.trainRelX += 92 * dt;
-            if (this.trainRelX > trackSpan + 200) {
-                this.trainRelX = -200;
-            }
-
-            const progress = Phaser.Math.Clamp(this.trainRelX / trackSpan, 0, 1);
-            const edgeFade = Math.min(Phaser.Math.Clamp(progress / 0.10, 0, 1), Phaser.Math.Clamp((1 - progress) / 0.10, 0, 1));
-            this.trainRig.setAlpha(edgeFade);
-
-            const slopeOffset = (progress - 0.5) * -18;
-            this.trainRig.setPosition(bgLeft + this.trainRelX, this.trainBaseY + slopeOffset + Math.sin(time * 0.022) * 1.1);
-            this.trainRig.setAngle(-1.1);
-
-            this.trainWheelAngle += dt * 4.5;
-            const a = this.trainWheelAngle;
-            const g = this.trainMechGfx;
-            g.clear();
-
-            const bigWheels = [{ x: -112, y: -30, r: 24 }, { x: -42, y: -30, r: 24 }, { x: 28, y: -30, r: 24 }];
-            const smallWheels = [{ x: 88, y: -17, r: 12 }, { x: 156, y: -17, r: 12 }];
-
-            g.lineStyle(2.2, 0xc9b48a, 0.72);
-            bigWheels.forEach((w) => {
-                for (let s = 0; s < 4; s++) {
-                    const ang = a + (s * Math.PI) / 4;
-                    g.lineBetween(w.x - Math.cos(ang) * (w.r - 4), w.y - Math.sin(ang) * (w.r - 4), w.x + Math.cos(ang) * (w.r - 4), w.y + Math.sin(ang) * (w.r - 4));
-                }
-            });
-            g.lineStyle(1.8, 0xb8a88a, 0.68);
-            smallWheels.forEach((w) => {
-                for (let s = 0; s < 3; s++) {
-                    const ang = a * 1.7 + (s * Math.PI) / 3;
-                    g.lineBetween(w.x - Math.cos(ang) * (w.r - 2), w.y - Math.sin(ang) * (w.r - 2), w.x + Math.cos(ang) * (w.r - 2), w.y + Math.sin(ang) * (w.r - 2));
-                }
-            });
-
-            const rodDx = Math.cos(a) * 9;
-            const rodDy = Math.sin(a) * 9;
-            g.lineStyle(4.5, 0xd9dee6, 0.92);
-            g.lineBetween(bigWheels[0].x + rodDx, bigWheels[0].y + rodDy, bigWheels[2].x + rodDx, bigWheels[2].y + rodDy);
-            g.lineStyle(3.5, 0xbec5d0, 0.9);
-            g.lineBetween(bigWheels[2].x + rodDx, bigWheels[2].y + rodDy, 102, -32);
-            g.fillStyle(0xf2d16b, 1);
-            bigWheels.forEach((w) => g.fillCircle(w.x + rodDx, w.y + rodDy, 3.5));
-
-            this.trainSmokeTimer += dt;
-            if (this.trainSmokeTimer > 0.24 && edgeFade > 0.25) {
-                this.trainSmokeTimer = 0;
-                const scale = this.trainRig.scaleX;
-                const chimneyX = this.trainRig.x + 118 * scale;
-                const chimneyY = this.trainRig.y - 168 * scale;
-                const puff = this.add.image(chimneyX, chimneyY, "soft_glow").setTint(0xf2f4fa).setScale(0.28).setAlpha(0.5 * edgeFade).setDepth(1.5);
-                this.tweens.add({
-                    targets: puff, x: chimneyX - Phaser.Math.Between(65, 115), y: chimneyY - Phaser.Math.Between(65, 110),
-                    scale: Phaser.Math.FloatBetween(1.05, 1.5), alpha: 0, duration: 1850, ease: "Quad.easeOut", onComplete: () => puff.destroy()
-                });
-            }
-        }
-
-        petKitten() {
-            const now = this.time.now;
-            if (now - this.lastPetTime < 550) return;
-            this.lastPetTime = now;
-            SoundFX.unlock();
-            SoundFX.playMeow();
-
-            const heart = this.add.text(this.kitten.x, this.kitten.y - 68, "💛", { fontSize: "24px" }).setOrigin(0.5).setDepth(18);
-            this.tweens.add({ targets: heart, y: heart.y - 46, alpha: 0, duration: 820, ease: "Cubic.easeOut", onComplete: () => heart.destroy() });
-            this.tweens.add({
-                targets: this.kitten, y: GROUND_Y - 22, duration: 150, yoyo: true, ease: "Sine.easeOut",
-                onComplete: () => { this.kitten.y = GROUND_Y - 2; }
-            });
-        }
-
-        castLumos() {
-            if (this.lumosSolved || !this.lumosActive) return;
-            this.lumosSolved = true;
-            this.lumosActive = false;
-            SoundFX.playLumos();
-            UI.btnLumos.classList.add("hidden");
-            UI.challengeBanner.classList.add("hidden");
-
-            const flash = this.add.image(this.player.x + 28, this.player.y - 75, "soft_glow").setTint(0xfff4b8).setScale(0.6).setAlpha(0.95).setDepth(16);
-            this.tweens.add({ targets: flash, scale: 9.5, alpha: 0, duration: 850, ease: "Cubic.easeOut", onComplete: () => flash.destroy() });
-            this.tweens.add({ targets: this.darknessOverlay, alpha: 0, duration: 650, ease: "Sine.easeOut" });
-
-            this.collectibleStars.forEach((item) => {
-                if (item.secret && !item.collected) {
-                    item.sprite.setVisible(true);
-                    this.tweens.add({ targets: item.sprite, alpha: 1, duration: 500 });
-                }
-            });
-
-            this.burstMagic(this.player.x + 30, this.player.y - 80, 34);
-            this.addHousePoints(40, this.player.x, this.player.y - 170);
-        }
-
-        startSnitchHunt() {
-            this.state = "SNITCH_HUNT";
-            this.snitchHits = 0;
-            InputState.touchWalk = false;
-            InputState.canvasHoldRight = false;
-            UI.btnWalk.classList.remove("walking");
-            this.resetLegsToIdle();
-
-            UI.challengeBanner.textContent = "🏆 Toque no Pomo de Ouro! (0/3)";
-            UI.challengeBanner.classList.remove("hidden");
-            SoundFX.playPopup();
-
-            const wv = this.cameras.main.worldView;
-            this.huntSnitch = this.add.image(wv.centerX, 240, "prop_snitch").setScale(0.62).setDepth(17).setInteractive({ useHandCursor: true });
-
-            const moveSnitch = () => {
-                if (!this.huntSnitch || !this.huntSnitch.active) return;
-                const cur = this.cameras.main.worldView;
-                const marginX = Math.min(110, cur.width * 0.18);
-                const tx = Phaser.Math.Between(Math.round(cur.left + marginX), Math.round(cur.right - marginX));
-                const ty = Phaser.Math.Between(140, 420);
-                this.snitchTween = this.tweens.add({
-                    targets: this.huntSnitch, x: tx, y: ty,
-                    duration: Math.max(680, 1180 - this.snitchHits * 170), ease: "Sine.easeInOut", onComplete: moveSnitch
-                });
-            };
-            moveSnitch();
-
-            this.huntSnitch.on("pointerdown", () => {
-                if (this.state !== "SNITCH_HUNT") return;
-                this.snitchHits += 1;
-                SoundFX.playCollect();
-                this.burstMagic(this.huntSnitch.x, this.huntSnitch.y, 18);
-                UI.challengeBanner.textContent = `🏆 Toque no Pomo de Ouro! (${this.snitchHits}/3)`;
-
-                if (this.snitchHits >= 3) {
-                    this.snitchSolved = true;
-                    if (this.snitchTween) this.snitchTween.stop();
-                    const sx = this.huntSnitch.x, sy = this.huntSnitch.y;
-                    this.huntSnitch.destroy();
-                    this.huntSnitch = null;
-                    UI.challengeBanner.classList.add("hidden");
-                    SoundFX.playChime();
-                    this.burstMagic(sx, sy, 40);
-                    this.addHousePoints(100, sx, sy);
-                    this.celebrateJump(() => { this.state = "WALKING"; });
-                } else {
-                    if (this.snitchTween) this.snitchTween.stop();
-                    moveSnitch();
-                }
-            });
-        }
-
-        addHousePoints(amount, x, y) {
-            const mult = this.felixTimer > 0 ? 2 : 1;
-            const gained = amount * mult;
-            this.housePoints += gained;
-            UI.updatePoints(this.housePoints);
-            const pop = this.add.text(x, y - 20, mult > 1 ? `+${gained} pts (2x!) ✨` : `+${gained} pts 🐍`, {
-                fontFamily: "Cinzel, serif", fontSize: "18px", fontStyle: "bold",
-                color: mult > 1 ? "#ffe680" : "#7affb2", stroke: "#092617", strokeThickness: 4
-            }).setOrigin(0.5).setDepth(18);
-            this.tweens.add({ targets: pop, y: pop.y - 54, alpha: 0, duration: 850, ease: "Cubic.easeOut", onComplete: () => pop.destroy() });
         }
 
         startJourney() {
             this.state = "WALKING";
             UI.hud.classList.remove("hidden");
             UI.controlsBar.classList.remove("hidden");
-            UI.updateProgress(0, `Fase 1/5 • ${DATA.quizzes[0].location}`);
-            UI.updatePoints(0);
+            UI.showBanner("✨ Mundo Aberto! Explore o vale em todas as direções!", 3600);
+            this.burstMagic(this.player.x, this.player.y - 36, 18);
         }
 
         resetJourney() {
-            this.solvedIds.clear();
-            this.housePoints = 0;
-            this.felixTimer = 0;
-            UI.hudFelix.classList.add("hidden");
-            UI.isacBubble.classList.add("hidden");
-            this.felixAura.setAlpha(0);
-            this.loadStage(0);
-            this.state = "WALKING";
-            UI.updatePoints(0);
-            UI.controlsBar.classList.remove("hidden");
+            this.scene.restart();
+            setTimeout(() => {
+                if (window.__heloraScene) {
+                    window.__heloraScene.startJourney();
+                }
+            }, 120);
         }
 
-        advanceToNextStage() {
-            this.state = "TRANSITION";
-            InputState.touchWalk = false;
-            InputState.canvasHoldRight = false;
-            UI.btnWalk.classList.remove("walking");
-            this.resetLegsToIdle();
+        addHousePoints(amount, x, y) {
+            const mult = this.felixTimer > 0 ? 2 : 1;
+            const total = amount * mult;
+            this.housePoints += total;
+            UI.updatePoints(this.housePoints);
 
-            const nextIdx = this.stageIdx + 1;
-            const nextStage = DATA.quizzes[nextIdx];
-            UI.showPhaseTransition(
-                nextIdx,
-                nextStage,
-                () => { this.loadStage(nextIdx); },
-                () => { this.state = "WALKING"; }
-            );
+            const txt = this.add.text(x, y - 34, mult > 1 ? `+${total} pts (2x!)` : `+${total} pts`, {
+                fontFamily: "Cinzel, serif",
+                fontSize: "16px",
+                fontStyle: "bold",
+                color: mult > 1 ? "#fff2a6" : "#7affb2",
+                stroke: "#091f14",
+                strokeThickness: 4
+            }).setOrigin(0.5).setDepth(15);
+
+            this.tweens.add({
+                targets: txt,
+                y: y - 78,
+                alpha: 0,
+                duration: 950,
+                ease: "Cubic.easeOut",
+                onComplete: () => txt.destroy()
+            });
         }
 
-        burstMagic(x, y, count = 26) {
-            const colors = [0x44e38e, 0xffe484, 0xffffff, 0x2ea367];
+        burstMagic(x, y, count = 16) {
             for (let i = 0; i < count; i++) {
-                const p = this.add.image(x, y, "sparkle_dot").setTint(colors[i % colors.length]).setScale(Phaser.Math.FloatBetween(0.45, 1.05)).setDepth(15);
-                const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
-                const dist = Phaser.Math.FloatBetween(55, 175);
+                const angle = (Math.PI * 2 * i) / count + Math.random() * 0.35;
+                const dist = Phaser.Math.Between(22, 68);
+                const sp = this.add.image(x, y, "sparkle_dot")
+                    .setTint(i % 2 === 0 ? 0xffe484 : 0x52f29b)
+                    .setScale(Phaser.Math.FloatBetween(0.28, 0.62))
+                    .setDepth(14.5);
                 this.tweens.add({
-                    targets: p, x: x + Math.cos(angle) * dist, y: y + Math.sin(angle) * dist - 30,
-                    alpha: 0, scale: 0.1, duration: Phaser.Math.Between(550, 950), ease: "Cubic.easeOut", onComplete: () => p.destroy()
+                    targets: sp,
+                    x: x + Math.cos(angle) * dist,
+                    y: y + Math.sin(angle) * dist,
+                    alpha: 0,
+                    scale: 0.08,
+                    duration: Phaser.Math.Between(360, 680),
+                    ease: "Cubic.easeOut",
+                    onComplete: () => sp.destroy()
                 });
             }
         }
 
-        celebrateJump(onDone) {
-            this.state = "CELEBRATE";
-            const basePlayerY = this.player.y;
-            const baseKittenY = this.kitten.y;
-            this.player.anims.stop();
-            this.player.setTexture("helora_celebrate");
-            this.player.setAngle(0);
-            this.burstMagic(this.player.x, basePlayerY - 90, 32);
+        petKitten() {
+            if (this.state !== "WALKING") return;
+            const now = this.time.now;
+            if (now - this.lastPetTime < 900) return;
+            this.lastPetTime = now;
+            SoundFX.unlock();
+            SoundFX.playMeow();
+            this.burstMagic(this.kitten.x, this.kitten.y - 24, 10);
+            this.addHousePoints(5, this.kitten.x, this.kitten.y - 16);
 
-            this.kitten.anims.stop();
-            if (!this.isPerspective) this.kitten.setTexture("kitten_idle");
-            const heart = this.add.text(this.kitten.x, baseKittenY - 60, "💛", { fontSize: "24px" }).setOrigin(0.5).setDepth(16);
-            this.tweens.add({ targets: heart, y: heart.y - 48, alpha: 0, duration: 900, ease: "Cubic.easeOut", onComplete: () => heart.destroy() });
+            const heart = this.add.text(this.kitten.x, this.kitten.y - 44, "💛", { fontSize: "20px" })
+                .setOrigin(0.5).setDepth(15);
             this.tweens.add({
-                targets: this.kitten, y: baseKittenY - 24, duration: 210, yoyo: true, repeat: 1, ease: "Sine.easeOut",
-                onComplete: () => { this.kitten.y = baseKittenY; }
+                targets: heart,
+                y: heart.y - 36,
+                alpha: 0,
+                scale: 1.35,
+                duration: 850,
+                ease: "Cubic.easeOut",
+                onComplete: () => heart.destroy()
+            });
+            this.tweens.add({
+                targets: this.kitten,
+                y: this.kitten.y - 14,
+                duration: 150,
+                yoyo: true,
+                ease: "Quad.easeOut"
+            });
+        }
+
+        openMarauderMap() {
+            if (this.state !== "WALKING") return;
+            this.state = "MODAL";
+            this.velX = 0;
+            this.velY = 0;
+            InputState.pointerWalk = false;
+            UI.showMarauderMap(this);
+        }
+
+        fastTravelTo(region) {
+            SoundFX.playSpellCast();
+            this.burstMagic(this.player.x, this.player.y - 30, 18);
+            this.player.setPosition(region.travelPos.x, region.travelPos.y);
+            this.kitten.setPosition(region.travelPos.x - 60, region.travelPos.y + 10);
+            this.velX = 0;
+            this.velY = 0;
+            this.state = "WALKING";
+            this.burstMagic(this.player.x, this.player.y - 30, 22);
+            this.updateCurrentRegion(true);
+            UI.showBanner(`🗺️ Chegou em ${region.location}!`, 2200);
+        }
+
+        interactWithNearby() {
+            if (this.state !== "WALKING" || !this.activeInteractable) return;
+            const item = this.activeInteractable;
+            this.state = "MODAL";
+            this.velX = 0;
+            this.velY = 0;
+            InputState.pointerWalk = false;
+            UI.btnExplore.classList.add("hidden");
+
+            if (item.type === "note") {
+                if (!item.done) {
+                    item.done = true;
+                    this.foundNotes.add(item.regionId);
+                    UI.updateNotes(this.foundNotes.size);
+                    item.sprite.setVisible(false);
+                    if (item.glow) item.glow.setVisible(false);
+                    this.burstMagic(item.x, item.y, 20);
+                    this.addHousePoints(30, item.x, item.y);
+                }
+                UI.showNoteModal("💌", item.data.title, item.data.text, () => {
+                    this.state = "WALKING";
+                });
+            } else {
+                UI.showNoteModal("✨", item.data.title, item.data.text, () => {
+                    this.state = "WALKING";
+                });
+            }
+        }
+
+        castLumos() {
+            if (!this.lumosActive || this.lumosSolved) return;
+            this.lumosSolved = true;
+            this.lumosActive = false;
+            SoundFX.playLumos();
+            UI.btnLumos.classList.add("hidden");
+
+            const flash = this.add.image(this.player.x, this.player.y - 42, "soft_glow")
+                .setTint(0xfff6c2)
+                .setScale(0.6)
+                .setAlpha(0.95)
+                .setDepth(15);
+            this.tweens.add({
+                targets: flash,
+                scale: 9,
+                alpha: 0,
+                duration: 750,
+                ease: "Cubic.easeOut",
+                onComplete: () => flash.destroy()
             });
 
-            this.tweens.add({
-                targets: this.player, y: basePlayerY - 34, duration: 240, yoyo: true, repeat: 1, ease: "Sine.easeOut",
-                onComplete: () => {
-                    this.player.y = basePlayerY;
-                    this.player.setTexture(this.isPerspective ? "helora_back_walk" : "helora_idle", 0);
-                    if (onDone) onDone();
+            this.tweens.add({ targets: this.darknessOverlay, alpha: 0, duration: 600 });
+
+            // Revelar 3 estrelas secretas da Floresta Proibida
+            this.collectibleStars.forEach((st) => {
+                if (st.secret && !st.collected) {
+                    st.sprite.setVisible(true);
+                    this.tweens.add({ targets: st.sprite, alpha: 1, duration: 450 });
+                }
+            });
+
+            this.burstMagic(this.player.x, this.player.y - 36, 26);
+            this.addHousePoints(40, this.player.x, this.player.y - 30);
+            UI.showBanner("✨ Lumos Maxima! Estrelas secretas reveladas! +40 pts!", 2800);
+        }
+
+        startSnitchHunt(zone) {
+            this.state = "SNITCH_HUNT";
+            this.snitchHits = 0;
+            this.velX = 0;
+            this.velY = 0;
+            InputState.pointerWalk = false;
+            this.player.anims.stop();
+            this.player.setTexture("helora_idle");
+
+            UI.showBanner("🏆 Caça ao Pomo de Ouro! Toque no Pomo 3 vezes! (0/3)");
+
+            this.huntSnitch = this.add.image(zone.x + 80, zone.y - 70, "prop_snitch")
+                .setScale(0.36)
+                .setDepth(15)
+                .setInteractive({ useHandCursor: true });
+
+            const hopSnitch = () => {
+                if (!this.huntSnitch || !this.huntSnitch.active) return;
+                const nx = Phaser.Math.Clamp(zone.x + Phaser.Math.Between(-150, 150), 1820, 2400);
+                const ny = Phaser.Math.Clamp(zone.y + Phaser.Math.Between(-120, 90), 250, 560);
+                this.tweens.add({
+                    targets: this.huntSnitch,
+                    x: nx,
+                    y: ny,
+                    duration: 760,
+                    ease: "Sine.easeInOut",
+                    onComplete: () => {
+                        if (this.state === "SNITCH_HUNT") hopSnitch();
+                    }
+                });
+            };
+            hopSnitch();
+
+            this.huntSnitch.on("pointerdown", () => {
+                if (this.state !== "SNITCH_HUNT") return;
+                SoundFX.unlock();
+                SoundFX.playCollect();
+                this.snitchHits += 1;
+                this.burstMagic(this.huntSnitch.x, this.huntSnitch.y, 16);
+                if (this.snitchHits < 3) {
+                    UI.showBanner(`🏆 Muito bem! Pegue o Pomo de Ouro! (${this.snitchHits}/3)`);
+                } else {
+                    this.snitchSolved = true;
+                    const sx = this.huntSnitch.x;
+                    const sy = this.huntSnitch.y;
+                    this.huntSnitch.destroy();
+                    this.huntSnitch = null;
+                    SoundFX.playChime();
+                    this.burstMagic(sx, sy, 32);
+                    this.addHousePoints(75, sx, sy);
+                    UI.showBanner("🏆 Pomo de Ouro capturado! +75 pts Sonserina!", 2800);
+                    this.state = "WALKING";
                 }
             });
         }
 
-        triggerQuiz() {
+        triggerQuiz(cp) {
             this.state = "QUIZ";
-            InputState.touchWalk = false;
-            InputState.canvasHoldRight = false;
-            UI.btnWalk.classList.remove("walking");
-            this.resetLegsToIdle();
+            this.velX = 0;
+            this.velY = 0;
+            InputState.pointerWalk = false;
+            this.player.anims.stop();
+            this.player.setTexture("helora_idle");
 
-            if (window.MagicMusic) window.MagicMusic.setDucked(true);
-
-            const cp = this.checkpoint;
             UI.showQuiz(cp.quiz, () => {
-                if (window.MagicMusic) window.MagicMusic.setDucked(false);
-                this.stageQuizSolved = true;
+                cp.solved = true;
                 this.solvedIds.add(cp.quiz.id);
                 cp.marker.setText(`✓ ${cp.quiz.location}`);
                 cp.marker.setColor("#7affb2");
-                if (this.exitMarker) this.exitMarker.setAlpha(1);
-                UI.updateProgress(this.solvedIds.size, `Fase ${cp.quiz.id}/5 • ${cp.quiz.location}`);
-                this.addHousePoints(50, this.player.x, this.player.y - 170);
+                cp.glow.setTint(0xffe484).setAlpha(0.32);
 
-                this.celebrateJump(() => { this.state = "WALKING"; });
-            });
-        }
+                this.addHousePoints(50, this.player.x, this.player.y - 36);
+                this.burstMagic(this.player.x, this.player.y - 36, 26);
 
-        castSpellBeam(fromX, fromY, toX, toY) {
-            SoundFX.playSpellCast();
-            const colors = [0x44e38e, 0xffe484, 0xffffff, 0x2ea367];
-            for (let i = 0; i < 28; i++) {
-                this.time.delayedCall(i * 20, () => {
-                    const orb = this.add.image(fromX, fromY, "sparkle_dot").setTint(colors[i % colors.length]).setScale(Phaser.Math.FloatBetween(0.55, 1.2)).setDepth(16);
-                    this.tweens.add({
-                        targets: orb, x: toX + Phaser.Math.Between(-24, 24), y: toY + Phaser.Math.Between(-24, 24),
-                        scale: 0.2, alpha: 0.15, duration: 420, ease: "Quad.easeOut", onComplete: () => orb.destroy()
-                    });
+                const solvedCount = this.solvedIds.size;
+                UI.updateProgress(solvedCount, DATA.quizzes[this.currentRegionIdx].location);
+
+                if (solvedCount >= DATA.quizzes.length) {
+                    this.finaleLabel.setText("🎂 Pátio da Surpresa • ENTRE AQUI! ✨");
+                    this.finaleLabel.setColor("#fff2a6");
+                    this.finaleGlow.setAlpha(0.85);
+                    UI.showBanner("✨ Todos os 5 quizzes resolvidos! Vá ao Pátio de Hogwarts! 🎂", 5000);
+                } else {
+                    this.finaleLabel.setText(`🎂 Pátio da Surpresa (${solvedCount}/5 quizzes)`);
+                }
+
+                this.state = "CELEBRATE";
+                this.player.setTexture("helora_celebrate");
+                this.tweens.add({
+                    targets: this.player,
+                    y: this.player.y - 16,
+                    duration: 180,
+                    yoyo: true,
+                    repeat: 1,
+                    onComplete: () => {
+                        this.player.setTexture("helora_idle");
+                        this.state = "WALKING";
+                    }
                 });
-            }
+            });
         }
 
         triggerFinale() {
             this.state = "FINALE";
-            InputState.touchWalk = false;
-            InputState.canvasHoldRight = false;
-            UI.btnWalk.classList.remove("walking");
+            this.finaleDone = true;
+            this.velX = 0;
+            this.velY = 0;
+            InputState.pointerWalk = false;
             UI.controlsBar.classList.add("hidden");
-            UI.updateProgress(DATA.quizzes.length, "Salão Principal 🎂");
-            this.resetLegsToIdle();
+            UI.hideBanner();
+            this.finaleLabel.setVisible(false);
 
+            if (window.MagicMusic) window.MagicMusic.setDucked(true);
             this.isacBg.setVisible(false);
-            if (this.finaleMarker) this.finaleMarker.setVisible(false);
 
-            const wv = this.cameras.main.worldView;
-            const startX = wv.right + 160;
-            const hoverX = this.isPerspective ? GAME_W / 2 + 125 : Math.min(this.finaleX + 70, wv.right - 130);
-            const hoverY = this.isPerspective ? 290 : GROUND_Y - 245;
-            const cakeTargetY = this.isPerspective ? 510 : GROUND_Y - 70;
-            const burstTargetY = this.isPerspective ? 500 : GROUND_Y - 95;
+            const fx = DATA.finalePos.x;
+            const fy = DATA.finalePos.y;
+            const cakeX = fx;
+            const cakeY = fy - 12;
 
-            this.isacHero = this.add.image(startX, 110, "isac_broom").setScale(0.76).setFlipX(true).setDepth(12);
+            // Posicionar Helora e Gatinho no pátio olhando para o centro
+            this.player.anims.stop();
+            this.player.setTexture("helora_celebrate").setFlipX(false);
+            this.tweens.add({ targets: [this.player, this.playerShadow], x: fx - 72, y: fy + 10, duration: 550, ease: "Sine.easeOut" });
+            this.kitten.anims.stop();
+            this.kitten.setTexture("kitten_idle").setFlipX(false);
+            this.tweens.add({ targets: [this.kitten, this.kittenShadow], x: fx - 126, y: fy + 16, duration: 550, ease: "Sine.easeOut" });
 
-            const trailEvent = this.time.addEvent({
-                delay: 75, repeat: 70,
-                callback: () => {
-                    if (!this.isacHero || !this.isacHero.active) return;
-                    const tailOffsetX = this.isacHero.flipX ? 85 : -85;
-                    const sp = this.add.image(this.isacHero.x + tailOffsetX, this.isacHero.y + Phaser.Math.Between(-12, 24), "sparkle_dot")
-                        .setTint(Math.random() > 0.45 ? 0x52f29b : 0xffe484).setScale(Phaser.Math.FloatBetween(0.35, 0.75)).setDepth(11);
-                    this.tweens.add({ targets: sp, alpha: 0, scale: 0.1, duration: 480, onComplete: () => sp.destroy() });
-                }
-            });
+            this.cameras.main.stopFollow();
+            this.cameras.main.pan(fx, fy - 24, 900, "Sine.easeInOut");
+
+            // Isac desce voando de vassoura no Pátio de Hogwarts!
+            this.isacHero = this.add.image(fx + 380, fy - 240, "isac_broom")
+                .setScale(0.42)
+                .setFlipX(true)
+                .setDepth(14);
 
             this.tweens.add({
-                targets: this.isacHero, x: hoverX, y: hoverY, duration: 1250, ease: "Cubic.easeOut",
+                targets: this.isacHero,
+                x: fx + 95,
+                y: fy - 95,
+                duration: 1500,
+                ease: "Cubic.easeOut",
                 onComplete: () => {
-                    const hoverTween = this.tweens.add({
-                        targets: this.isacHero, y: hoverY - 12, duration: 850, yoyo: true, repeat: -1, ease: "Sine.easeInOut"
+                    this.tweens.add({
+                        targets: this.isacHero,
+                        y: this.isacHero.y - 10,
+                        duration: 900,
+                        yoyo: true,
+                        repeat: -1,
+                        ease: "Sine.easeInOut"
                     });
 
+                    // Fala do Isac
                     UI.isacText.textContent = DATA.brother.greeting;
                     UI.isacBubble.classList.remove("hidden");
                     SoundFX.playPopup();
 
-                    this.time.delayedCall(2200, () => {
-                        this.castSpellBeam(this.isacHero.x - 95, this.isacHero.y - 25, this.cakeSprite.x, cakeTargetY);
+                    // Feitiço mágico do Isac materializa o Bolo Invisível!
+                    this.time.delayedCall(1500, () => {
+                        SoundFX.playSpellCast();
+                        const orb = this.add.image(this.isacHero.x - 24, this.isacHero.y + 8, "sparkle_dot")
+                            .setTint(0x52f29b).setScale(1.1).setDepth(15);
+                        this.tweens.add({
+                            targets: orb,
+                            x: cakeX,
+                            y: cakeY - 20,
+                            duration: 550,
+                            ease: "Quad.easeIn",
+                            onComplete: () => {
+                                orb.destroy();
+                                SoundFX.playCakeAppear();
+                                this.burstMagic(cakeX, cakeY - 18, 38);
+                                this.tweens.add({
+                                    targets: this.cakeSprite,
+                                    alpha: 1,
+                                    scale: 0.44,
+                                    duration: 750,
+                                    ease: "Back.easeOut"
+                                });
 
-                        this.time.delayedCall(400, () => {
-                            SoundFX.playCakeAppear();
-                            this.burstMagic(this.cakeSprite.x, burstTargetY, 56);
-                            if (this.finaleGlow) this.finaleGlow.setVisible(false);
-                            const finalCakeScale = this.isPerspective ? 0.72 : 1;
-                            this.tweens.add({ targets: this.cakeSprite, alpha: 1, scale: finalCakeScale, duration: 680, ease: "Back.easeOut" });
-                            this.celebrateJump(() => { this.player.setTexture("helora_celebrate"); });
-                        });
-
-                        this.time.delayedCall(1550, () => {
-                            UI.isacBubble.classList.add("hidden");
-                            hoverTween.stop();
-                            this.tweens.add({
-                                targets: this.isacHero, x: wv.left - 240, y: 65, angle: -8, duration: 1150, ease: "Quad.easeIn",
-                                onComplete: () => {
-                                    trailEvent.remove(false);
-                                    if (this.isacHero) { this.isacHero.destroy(); this.isacHero = null; }
-                                    UI.showEnvelope(this.housePoints);
-                                }
-                            });
+                                // Isac sobe voando e abre o Envelope de Aniversário
+                                this.time.delayedCall(2100, () => {
+                                    UI.isacBubble.classList.add("hidden");
+                                    this.tweens.add({
+                                        targets: this.isacHero,
+                                        x: fx - 440,
+                                        y: fy - 280,
+                                        alpha: 0,
+                                        duration: 1500,
+                                        ease: "Cubic.easeIn",
+                                        onComplete: () => {
+                                            if (this.isacHero) this.isacHero.destroy();
+                                            this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
+                                            UI.showEnvelope(this.housePoints, () => {
+                                                if (window.MagicMusic) window.MagicMusic.setDucked(false);
+                                            });
+                                        }
+                                    });
+                                });
+                            }
                         });
                     });
                 }
             });
         }
 
-        resetLegsToIdle() {
-            this.playerVel = 0;
-            this.depthVel = 0;
-            this.player.anims.stop();
-            this.player.setTexture(this.isPerspective ? "helora_back_walk" : "helora_idle", 0);
-            this.player.setAngle(0);
-            if (!this.isPerspective) this.player.y = GROUND_Y;
+        updateCurrentRegion(force = false) {
+            let bestIdx = 0;
+            let bestDist = Infinity;
+            DATA.quizzes.forEach((r, idx) => {
+                const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, r.regionCenter.x, r.regionCenter.y);
+                if (d < bestDist) {
+                    bestDist = d;
+                    bestIdx = idx;
+                }
+            });
+            if (force || bestIdx !== this.currentRegionIdx) {
+                this.currentRegionIdx = bestIdx;
+                UI.updateProgress(this.solvedIds.size, DATA.quizzes[bestIdx].location);
+            }
         }
 
-        spawnShootingStar() {
-            if (this.currentStage && this.currentStage.indoor) return;
-            const wv = this.cameras.main.worldView;
-            const sx = Phaser.Math.Between(Math.round(wv.left + 80), Math.round(wv.right - 60));
-            const sy = Phaser.Math.Between(45, 190);
-            const star = this.add.image(sx, sy, "sparkle_dot").setTint(0xfff6cc).setScale(0.65).setDepth(1.2);
-            this.tweens.add({ targets: star, x: sx - 240, y: sy + 115, alpha: 0, scale: 0.1, duration: 780, ease: "Quad.easeOut", onComplete: () => star.destroy() });
+        applyWalkableBounds(nx, ny) {
+            let x = Phaser.Math.Clamp(nx, 70, WORLD_W - 70);
+            let y = Phaser.Math.Clamp(ny, 210, WORLD_H - 42);
+
+            // Colisões completas do vale (árvores, casas, muralhas, Lago Negro, aterros/pilares da ponte — túnel da ponte e portão do castelo LIVRES!)
+            const solids = [
+                // Lago Negro (NW)
+                { x1: 0, y1: 0, x2: 530, y2: 430 },
+                { x1: 530, y1: 0, x2: 715, y2: 290 },
+                // Pinheiros ao norte do Castelo / Quadribol
+                { x1: 715, y1: 0, x2: 880, y2: 265 },
+                { x1: 860, y1: 0, x2: 1730, y2: 345 },     // Telhados do Castelo de Hogwarts
+                { x1: 1730, y1: 0, x2: 2560, y2: 190 },    // Pinheiros atrás do Quadribol
+                // Muralhas laterais do Castelo (portão central x:1218..1342 aberto!)
+                { x1: 890, y1: 480, x2: 1218, y2: 605 },
+                { x1: 1342, y1: 480, x2: 1670, y2: 605 },
+                // Beco Diagonal — árvores oeste + fileira superior de lojas + casas inferiores
+                { x1: 0, y1: 560, x2: 280, y2: 830 },
+                { x1: 0, y1: 790, x2: 470, y2: 1095 },
+                { x1: 520, y1: 790, x2: 940, y2: 1125 },
+                { x1: 0, y1: 1295, x2: 440, y2: 1440 },
+                { x1: 530, y1: 1300, x2: 860, y2: 1440 },
+                // Mata da Floresta Proibida (entre avenida central, Quadribol e clareira de cogumelos)
+                { x1: 1545, y1: 785, x2: 1885, y2: 1030 },
+                { x1: 1885, y1: 685, x2: 2430, y2: 915 },
+                { x1: 2385, y1: 480, x2: 2560, y2: 960 },
+                { x1: 1580, y1: 1185, x2: 2040, y2: 1440 },
+                // Ponte / Viaduto de Pedra: bloqueia trilhos laterais e pilares, deixando o arco (túnel) livre para passar por BAIXO!
+                { x1: 1900, y1: 1280, x2: 2150, y2: 1440 }, // Aterro esquerdo dos trilhos
+                { x1: 2385, y1: 920, x2: 2560, y2: 1130 },  // Aterro direito dos trilhos
+                { x1: 2145, y1: 1255, x2: 2228, y2: 1385 }, // Pilar esquerdo do arco
+                { x1: 2385, y1: 1110, x2: 2475, y2: 1275 }  // Pilar direito do arco
+            ];
+
+            // 2 passagens para deslizar suavemente em cantos
+            for (let pass = 0; pass < 2; pass++) {
+                for (const r of solids) {
+                    if (x > r.x1 && x < r.x2 && y > r.y1 && y < r.y2) {
+                        const dl = x - r.x1;
+                        const dr = r.x2 - x;
+                        const dt = y - r.y1;
+                        const db = r.y2 - y;
+                        const m = Math.min(dl, dr, dt, db);
+                        if (m === db) y = r.y2;
+                        else if (m === dt) y = r.y1;
+                        else if (m === dl) x = r.x1;
+                        else x = r.x2;
+                    }
+                }
+            }
+            return { x, y };
         }
 
         update(time, delta) {
-            const dt = delta / 1000;
-            const cam = this.cameras.main;
-            const wv = cam.worldView;
-            const midX = wv.centerX;
+            const dt = Math.min(delta / 1000, 0.05);
 
-            // 1. Movimento da câmera / background (Modo Perspectiva 2.5D na Fase 5 OU Parallax Lateral nas Fases 1–4)
-            if (this.isPerspective) {
-                const bgZoom = 1 + this.depthProgress * 0.36;
-                this.stageBg.setDisplaySize(this.bgDisplayW * bgZoom, GAME_H * bgZoom);
-                // Mantém o portão do castelo bem enquadrado enquanto cresce na aproximação
-                this.stageBg.setPosition(GAME_W / 2, GAME_H / 2 + this.depthProgress * 46);
-            } else {
-                const progress = Phaser.Math.Clamp((this.player.x - 180) / Math.max(1, this.stageWidth - 380), 0, 1);
-                const maxPan = Math.max(0, (this.bgDisplayW - wv.width) / 2);
-                this.stageBg.setPosition(midX + (0.5 - progress) * (maxPan * 2), GAME_H / 2);
-            }
-            if (this.darknessOverlay) this.darknessOverlay.setPosition(midX, GAME_H / 2);
-
-            // Vagalumes e estrelas cadentes
-            for (const dot of this.ambientFireflies) {
-                dot.y = dot.baseY + Math.sin(time * 0.0015 * dot.speed + dot.phase) * 14;
-            }
-            this.shootingStarTimer -= dt;
-            if (this.shootingStarTimer <= 0) {
-                this.shootingStarTimer = Phaser.Math.FloatBetween(4.0, 7.5);
-                this.spawnShootingStar();
+            // Vagalumes flutuando
+            for (const f of this.ambientFireflies) {
+                f.y = f.baseY + Math.sin(time * 0.0018 * f.speed + f.phase) * 9;
             }
 
-            // Expresso animado na Fase 2
-            if (this.trainRig) this.updateAnimatedTrain(time, dt);
-
-            // Isac voando no céu nas fases externas
+            // Isac voando no céu do vale
             if (this.isacBg && this.isacBg.visible) {
-                this.isacBgRelX += this.isacBgDir * 95 * dt;
-                if (this.isacBgRelX > wv.width + 130) {
+                this.isacBg.x += this.isacBgDir * 115 * dt;
+                this.isacBg.y = 250 + Math.sin(time * 0.0022) * 24;
+                if (this.isacBg.x > WORLD_W + 180) {
                     this.isacBgDir = -1;
                     this.isacBg.setFlipX(true);
-                } else if (this.isacBgRelX < -130) {
+                } else if (this.isacBg.x < -180) {
                     this.isacBgDir = 1;
                     this.isacBg.setFlipX(false);
                 }
-                this.isacBg.setPosition(wv.left + this.isacBgRelX, 148 + Math.sin(time * 0.0026) * 18);
                 this.isacBgTrailTimer += dt;
-                if (this.isacBgTrailTimer > 0.18) {
+                if (this.isacBgTrailTimer > 0.16) {
                     this.isacBgTrailTimer = 0;
-                    const sp = this.add.image(this.isacBg.x - this.isacBgDir * 44, this.isacBg.y + 8, "sparkle_dot")
-                        .setTint(Math.random() > 0.5 ? 0x52f29b : 0xffe484).setScale(0.26).setAlpha(0.75).setDepth(1);
-                    this.tweens.add({ targets: sp, alpha: 0, scale: 0.08, duration: 550, onComplete: () => sp.destroy() });
+                    const tr = this.add.image(this.isacBg.x - this.isacBgDir * 24, this.isacBg.y + 8, "sparkle_dot")
+                        .setTint(0x52f29b).setScale(0.28).setAlpha(0.75).setDepth(12.8);
+                    this.tweens.add({ targets: tr, alpha: 0, scale: 0.06, duration: 480, onComplete: () => tr.destroy() });
                 }
             }
 
-            // Timer da Poção Felix Felicis
+            // Timer Felix Felicis
             if (this.felixTimer > 0) {
-                this.felixTimer = Math.max(0, this.felixTimer - dt);
-                this.felixAura.setPosition(this.player.x, this.player.y - 95);
-                this.felixAura.setAlpha(0.55 + Math.sin(time * 0.015) * 0.2);
+                this.felixTimer -= dt;
+                this.felixAura.setPosition(this.player.x, this.player.y - 36);
+                this.felixAura.setAlpha(0.5 + Math.sin(time * 0.012) * 0.18);
                 if (this.felixTimer <= 0) {
                     this.felixAura.setAlpha(0);
                     UI.hudFelix.classList.add("hidden");
                 }
             }
 
-            if (this.lumosActive && (Phaser.Input.Keyboard.JustDown(this.keyL) || Phaser.Input.Keyboard.JustDown(this.keySpace))) {
+            // Atalhos de teclado (M = Mapa, E = Explorar, L = Lumos)
+            if (Phaser.Input.Keyboard.JustDown(this.keyM) && this.state === "WALKING") {
+                this.openMarauderMap();
+                return;
+            }
+            if (Phaser.Input.Keyboard.JustDown(this.keyE) && this.state === "WALKING" && this.activeInteractable) {
+                this.interactWithNearby();
+                return;
+            }
+            if (Phaser.Input.Keyboard.JustDown(this.keyL) && this.lumosActive) {
                 this.castLumos();
             }
 
-            // === UPDATE MODO PERSPECTIVA 2.5D "DE COSTAS" (FASE 5) ===
-            if (this.isPerspective) {
-                if (this.state !== "WALKING") return;
-                const moveForward = this.cursors.right.isDown || this.cursors.up.isDown || this.keyD.isDown || this.keyW.isDown || InputState.touchWalk || InputState.canvasHoldRight;
-                const targetDVel = moveForward ? 0.24 : 0;
-                this.depthVel += (targetDVel - this.depthVel) * Math.min(1, 8.5 * dt);
-                if (this.depthVel < 0.005 && !moveForward) this.depthVel = 0;
+            if (this.state !== "WALKING") {
+                this.updateKittenFollow(dt, time, false);
+                return;
+            }
 
-                if (this.depthVel > 0.008) {
-                    this.depthProgress = Phaser.Math.Clamp(this.depthProgress + this.depthVel * dt, 0, 0.96);
+            // Input 360°: Teclado + Joystick Virtual + Toque no Mapa
+            let inX = 0;
+            let inY = 0;
+
+            if (this.cursors.left.isDown || this.keyA.isDown) inX -= 1;
+            if (this.cursors.right.isDown || this.keyD.isDown) inX += 1;
+            if (this.cursors.up.isDown || this.keyW.isDown) inY -= 1;
+            if (this.cursors.down.isDown || this.keyS.isDown) inY += 1;
+
+            if (inX === 0 && inY === 0 && InputState.joyActive) {
+                inX = InputState.joyX;
+                inY = InputState.joyY;
+            } else if (inX === 0 && inY === 0 && InputState.pointerWalk) {
+                const wp = this.cameras.main.getWorldPoint(InputState.pointerScreenX, InputState.pointerScreenY);
+                const dx = wp.x - this.player.x;
+                const dy = wp.y - this.player.y;
+                const dist = Math.hypot(dx, dy);
+                if (dist > 18) {
+                    inX = dx / dist;
+                    inY = dy / dist;
+                }
+            }
+
+            const mag = Math.hypot(inX, inY);
+            const joyOuterSprint = InputState.joyActive && mag > 0.88;
+            const isSprinting = (this.keyShift && this.keyShift.isDown) || InputState.touchSprint || joyOuterSprint;
+            if (UI.btnSprint) UI.btnSprint.classList.toggle("active", isSprinting && mag > 0.05);
+
+            if (mag > 1) {
+                inX /= mag;
+                inY /= mag;
+            }
+
+            let activeSpeed = WALK_SPEED * (isSprinting ? 1.55 : 1.0);
+            if (this.felixTimer > 0) activeSpeed *= 1.25;
+            const targetVX = inX * activeSpeed;
+            const targetVY = inY * activeSpeed;
+            const smooth = Math.min(1, (isSprinting ? 13 : 10) * dt);
+            this.velX += (targetVX - this.velX) * smooth;
+            this.velY += (targetVY - this.velY) * smooth;
+
+            const speed = Math.hypot(this.velX, this.velY);
+            const isMoving = speed > 10;
+            this.playerSprinting = isMoving && isSprinting;
+
+            if (isMoving) {
+                const nextPos = this.applyWalkableBounds(
+                    this.player.x + this.velX * dt,
+                    this.player.y + this.velY * dt
+                );
+                this.player.x = nextPos.x;
+                this.player.y = nextPos.y;
+
+                const speedRatio = Math.min(1.55, speed / WALK_SPEED);
+                this.walkPhase += dt * (isSprinting ? 14.5 : (7.5 + speedRatio * 4.5));
+
+                // Escolher sprite e animação exatos das 4 direções!
+                if (Math.abs(this.velX) >= Math.abs(this.velY) * 0.85) {
+                    this.facing = this.velX >= 0 ? "right" : "left";
+                    this.player.setFlipX(this.velX < 0);
+                    if (this.player.anims.currentAnim?.key !== "helora_walk_anim" || !this.player.anims.isPlaying) {
+                        this.player.play("helora_walk_anim", true);
+                    }
+                } else if (this.velY < 0) {
+                    this.facing = "up";
+                    this.player.setFlipX(false);
                     if (this.player.anims.currentAnim?.key !== "helora_back_anim" || !this.player.anims.isPlaying) {
                         this.player.play("helora_back_anim", true);
                     }
-                    this.walkPhase += dt * 10;
-                    UI.btnWalk.classList.add("walking");
                 } else {
-                    if (this.player.anims.isPlaying) {
-                        this.player.anims.stop();
-                        this.player.setTexture("helora_back_walk", 0);
-                    }
-                    UI.btnWalk.classList.remove("walking");
-                }
-
-                const p = this.depthProgress;
-                const bob = this.depthVel > 0.008 ? Math.abs(Math.sin(this.walkPhase)) * (5 * (1 - p * 0.4)) : 0;
-                const hScale = Phaser.Math.Linear(1.02, 0.56, p);
-                const hY = Phaser.Math.Linear(686, 540, p);
-                const hX = GAME_W / 2 + Phaser.Math.Linear(26, 16, p);
-                this.player.setPosition(hX, hY - bob).setScale(hScale);
-                this.playerShadow.setPosition(hX, hY - 4).setScale(hScale);
-
-                const kScale = Phaser.Math.Linear(0.84, 0.44, p);
-                const kBob = this.depthVel > 0.008 ? Math.abs(Math.sin(this.walkPhase * 1.25)) * 4 : 0;
-                const kX = GAME_W / 2 - Phaser.Math.Linear(86, 44, p);
-                const kY = hY + 6;
-                this.kitten.setPosition(kX, kY - kBob).setScale(kScale);
-                this.kittenShadow.setPosition(kX, kY - 2).setScale(kScale);
-
-                // Coletar estrelas na perspectiva
-                for (const item of this.collectibleStars) {
-                    if (!item.collected && p >= item.progressTarget - 0.05) {
-                        item.collected = true;
-                        item.sprite.setVisible(false);
-                        SoundFX.playCollect();
-                        this.burstMagic(item.baseX, item.baseY, 14);
-                        this.addHousePoints(10, item.baseX, item.baseY);
+                    this.facing = "down";
+                    this.player.setFlipX(false);
+                    if (this.player.anims.currentAnim?.key !== "helora_front_anim" || !this.player.anims.isPlaying) {
+                        this.player.play("helora_front_anim", true);
                     }
                 }
 
-                // Quiz 5 no Portão de Hogwarts
-                if (!this.stageQuizSolved && p >= 0.72) {
-                    this.triggerQuiz();
-                    return;
-                }
+                this.player.anims.timeScale = isSprinting ? 1.48 : (0.75 + Math.min(1, speedRatio) * 0.35);
+                this.player.setScale(HELORA_SCALE);
+                this.player.setAngle(0);
+                // Leve bounce vertical limpo sem inclinar ou deformar o sprite
+                const strideLift = isSprinting ? Math.abs(Math.sin(this.walkPhase)) * 3.8 : Math.abs(Math.sin(this.walkPhase)) * 1.4;
+                this.playerVisualOffsetY = -strideLift;
 
-                // Chegada Final — Isac desce voando sobre Hogwarts e invoca o bolo!
-                if (this.stageQuizSolved && p >= 0.92) {
-                    if (this.checkpoint && this.checkpoint.marker) this.checkpoint.marker.setVisible(false);
-                    this.triggerFinale();
-                }
-                return;
-            }
-
-            // Gatinho seguindo Helora (animação 100% intacta!)
-            const facingDir = this.player.flipX ? -1 : 1;
-            const kittenTargetX = this.player.x - facingDir * 112;
-            const kDist = kittenTargetX - this.kitten.x;
-            if (Math.abs(kDist) > 8 && this.state !== "CELEBRATE") {
-                const kStep = Math.sign(kDist) * Math.min(Math.abs(kDist), WALK_SPEED * 0.96 * dt);
-                this.kitten.x += kStep;
-                this.kitten.setFlipX(kDist < 0);
-                this.kitten.setScale(0.74);
-                this.kitten.setAngle(0);
-                if (this.kitten.anims.currentAnim?.key !== "kitten_walk_anim" || !this.kitten.anims.isPlaying) {
-                    this.kitten.play("kitten_walk_anim", true);
-                }
-                this.kitten.y = GROUND_Y - 2;
-            } else if (this.state !== "CELEBRATE") {
-                if (this.kitten.anims.isPlaying) {
-                    this.kitten.anims.stop();
-                    this.kitten.setTexture("kitten_idle");
-                }
-                const kBreath = 0.74 * (1 + Math.sin(time * 0.004) * 0.02);
-                this.kitten.setScale(0.74, kBreath);
-                this.kitten.setAngle(0);
-                this.kitten.y = GROUND_Y - 2;
-            }
-            this.kittenShadow.x = this.kitten.x;
-
-            if (this.state !== "WALKING") return;
-
-            const moveRight = this.cursors.right.isDown || this.keyD.isDown || InputState.touchWalk || InputState.canvasHoldRight;
-            const moveLeft = this.cursors.left.isDown || this.keyA.isDown;
-
-            const activeSpeed = this.felixTimer > 0 ? WALK_SPEED * 1.32 : WALK_SPEED;
-            const targetVel = moveRight ? activeSpeed : (moveLeft ? -activeSpeed * 0.82 : 0);
-            const accelRate = targetVel !== 0 ? 9.5 : 8.5;
-            this.playerVel += (targetVel - this.playerVel) * Math.min(1, accelRate * dt);
-            if (Math.abs(this.playerVel) < 4 && targetVel === 0) this.playerVel = 0;
-
-            const isMoving = Math.abs(this.playerVel) > 8;
-            if (isMoving) {
-                const dir = this.playerVel >= 0 ? 1 : -1;
-                const speedRatio = Math.min(1, Math.abs(this.playerVel) / WALK_SPEED);
-                const maxX = this.currentStage.isFinaleStage ? this.finaleX - 115 : this.stageWidth - 90;
-                this.player.x = Phaser.Math.Clamp(this.player.x + this.playerVel * dt, 130, maxX);
-                this.player.setFlipX(dir < 0);
-                this.player.setScale(0.92);
-
-                if (this.player.anims.currentAnim?.key !== "helora_walk_anim" || !this.player.anims.isPlaying) {
-                    this.player.play("helora_walk_anim", true);
-                }
-                this.player.anims.timeScale = 0.65 + speedRatio * 0.55;
-
-                this.walkPhase += dt * (6 + speedRatio * 5.5);
-                this.player.y = GROUND_Y - Math.abs(Math.sin(this.walkPhase)) * (3.5 * speedRatio);
-                this.player.setAngle(Math.sin(this.walkPhase) * (1.1 * speedRatio));
-
-                UI.btnWalk.classList.toggle("walking", moveRight);
-
+                // Poeira mágica dos passos (mais intensa na corridinha!)
                 this.stepDustTimer += dt * speedRatio;
-                if (this.stepDustTimer > 0.22) {
+                const dustInterval = isSprinting ? 0.11 : 0.22;
+                if (this.stepDustTimer > dustInterval) {
                     this.stepDustTimer = 0;
-                    const puff = this.add.image(this.player.x - dir * 10, GROUND_Y - 5, "sparkle_dot")
-                        .setTint(0xffe9a8).setScale(0.32).setAlpha(0.55).setDepth(9);
-                    this.tweens.add({ targets: puff, x: puff.x - dir * 24, y: puff.y - 12, alpha: 0, scale: 0.1, duration: 380, onComplete: () => puff.destroy() });
+                    const puff = this.add.image(this.player.x + Phaser.Math.Between(-6, 6), this.player.y - 2, "sparkle_dot")
+                        .setTint(isSprinting ? 0xfff2a6 : 0xffe9a8)
+                        .setScale(isSprinting ? 0.30 : 0.22)
+                        .setAlpha(isSprinting ? 0.72 : 0.52)
+                        .setDepth(4.9);
+                    this.tweens.add({ targets: puff, y: puff.y - 12, alpha: 0, scale: 0.08, duration: 360, onComplete: () => puff.destroy() });
                 }
 
                 this.particleTimer += dt * speedRatio;
-                if (this.particleTimer > 0.14) {
+                const sparkInterval = isSprinting ? 0.09 : 0.17;
+                if (this.particleTimer > sparkInterval) {
                     this.particleTimer = 0;
-                    const sp = this.add.image(this.player.x + dir * 24, this.player.y - 68 + Phaser.Math.Between(-8, 8), "sparkle_dot")
-                        .setTint(Math.random() > 0.45 ? 0xffe484 : 0x52f29b).setScale(Phaser.Math.FloatBetween(0.24, 0.48)).setDepth(9);
-                    this.tweens.add({ targets: sp, x: sp.x - dir * 26, y: sp.y - 16, alpha: 0, duration: 420, onComplete: () => sp.destroy() });
+                    const sp = this.add.image(this.player.x + Phaser.Math.Between(-12, 12), this.player.y - 34, "sparkle_dot")
+                        .setTint(Math.random() > 0.45 ? 0xffe484 : 0x52f29b).setScale(Phaser.Math.FloatBetween(0.18, 0.38)).setDepth(this.player.depth);
+                    this.tweens.add({ targets: sp, y: sp.y - 16, alpha: 0, duration: 400, onComplete: () => sp.destroy() });
                 }
             } else {
-                if (this.player.anims.isPlaying) {
-                    this.player.anims.stop();
-                    this.player.setTexture("helora_idle");
+                this.velX = 0;
+                this.velY = 0;
+                this.playerSprinting = false;
+                if (this.player.anims.isPlaying) this.player.anims.stop();
+                if (this.facing === "up") {
+                    this.player.setTexture("helora_back_walk", 1).setFlipX(false);
+                } else if (this.facing === "down") {
+                    this.player.setTexture("helora_front_walk", 0).setFlipX(false);
+                } else {
+                    this.player.setTexture("helora_idle").setFlipX(this.facing === "left");
                 }
-                const breath = 0.92 * (1 + Math.sin(time * 0.0035) * 0.015);
-                this.player.setScale(0.92, breath);
+                const breath = HELORA_SCALE * (1 + Math.sin(time * 0.0035) * 0.015);
+                this.player.setScale(HELORA_SCALE, breath);
                 this.player.setAngle(0);
-                this.player.y = GROUND_Y;
-                UI.btnWalk.classList.remove("walking");
             }
 
-            this.playerShadow.x = this.player.x;
+            this.player.setDepth(5 + this.player.y / 1000);
+            this.playerShadow.setPosition(this.player.x, this.player.y + 2);
+            if (isMoving && this.playerVisualOffsetY) {
+                this.player.setOrigin(0.5, 0.92 - this.playerVisualOffsetY / 256);
+            } else {
+                this.player.setOrigin(0.5, 0.92);
+            }
 
-            // Coletar estrelas
-            for (const item of this.collectibleStars) {
-                if (!item.collected && item.sprite.visible && Math.abs(this.player.x - item.baseX) < 58) {
-                    item.collected = true;
-                    item.sprite.setVisible(false);
+            this.updateKittenFollow(dt, time, isMoving);
+            this.updateCurrentRegion(false);
+            this.checkWorldInteractions();
+        }
+
+        updateKittenFollow(dt, time, playerMoving) {
+            const dx = this.player.x - this.kitten.x;
+            const dy = this.player.y - this.kitten.y;
+            const dist = Math.hypot(dx, dy);
+
+            if (dist > 62) {
+                const kittenSprinting = this.playerSprinting || dist > 115;
+                const kSpeed = kittenSprinting ? 415 : 275;
+                const moveDist = Math.min(dist - 54, kSpeed * dt);
+                const vx = (dx / dist) * moveDist;
+                const vy = (dy / dist) * moveDist;
+
+                // Gatinho também respeita TODAS as colisões de árvores, casas e pilares!
+                const kNext = this.applyWalkableBounds(this.kitten.x + vx, this.kitten.y + vy);
+                this.kitten.x = kNext.x;
+                this.kitten.y = kNext.y;
+
+                // Animações completas de 4 frames nas 4 direções!
+                if (Math.abs(vx) >= Math.abs(vy) * 0.85) {
+                    this.kitten.setFlipX(vx < 0);
+                    if (this.kitten.anims.currentAnim?.key !== "kitten_walk_anim" || !this.kitten.anims.isPlaying) {
+                        this.kitten.play("kitten_walk_anim", true);
+                    }
+                } else if (vy < 0) {
+                    this.kitten.setFlipX(false);
+                    if (this.kitten.anims.currentAnim?.key !== "kitten_back_anim" || !this.kitten.anims.isPlaying) {
+                        this.kitten.play("kitten_back_anim", true);
+                    }
+                } else {
+                    this.kitten.setFlipX(false);
+                    if (this.kitten.anims.currentAnim?.key !== "kitten_front_anim" || !this.kitten.anims.isPlaying) {
+                        this.kitten.play("kitten_front_anim", true);
+                    }
+                }
+
+                this.kitten.anims.timeScale = kittenSprinting ? 1.65 : 1.05;
+                const hop = kittenSprinting ? (1 + Math.abs(Math.sin(time * 0.022)) * 0.07) : 1;
+                this.kitten.setScale(KITTEN_SCALE, KITTEN_SCALE * hop);
+                this.kitten.setAngle(Math.sin(time * (kittenSprinting ? 0.024 : 0.014)) * (kittenSprinting ? 4.5 : 2.2));
+            } else if (!playerMoving) {
+                if (this.kitten.anims.isPlaying) this.kitten.anims.stop();
+                this.kitten.setTexture("kitten_idle").setFlipX(this.player.x < this.kitten.x);
+                const kBreath = KITTEN_SCALE * (1 + Math.sin(time * 0.0042) * 0.02);
+                this.kitten.setScale(KITTEN_SCALE, kBreath);
+                this.kitten.setAngle(0);
+            }
+
+            this.kitten.setDepth(5 + this.kitten.y / 1000);
+            this.kittenShadow.setPosition(this.kitten.x, this.kitten.y + 2);
+        }
+
+        checkWorldInteractions() {
+            const px = this.player.x;
+            const py = this.player.y;
+
+            // 1. Coletar estrelas
+            for (const st of this.collectibleStars) {
+                if (!st.collected && st.sprite.visible && Phaser.Math.Distance.Between(px, py, st.x, st.y) < 46) {
+                    st.collected = true;
+                    st.sprite.setVisible(false);
                     SoundFX.playCollect();
-                    this.burstMagic(item.baseX, item.baseY, 12);
-                    this.addHousePoints(10, item.baseX, item.baseY);
+                    this.burstMagic(st.x, st.y, 12);
+                    this.addHousePoints(10, st.x, st.y);
                 }
             }
 
-            // Coletar Poção Felix Felicis
-            if (this.stagePotion && !this.stagePotion.collected && Math.abs(this.player.x - this.stagePotion.baseX) < 62) {
-                this.stagePotion.collected = true;
-                this.stagePotion.sprite.setVisible(false);
-                this.stagePotion.glow.setVisible(false);
-                this.felixTimer = 5.5;
-                UI.hudFelix.classList.remove("hidden");
-                SoundFX.playPotion();
-                this.burstMagic(this.stagePotion.baseX, this.stagePotion.baseY, 26);
-                this.addHousePoints(25, this.stagePotion.baseX, this.stagePotion.baseY);
+            // 2. Coletar Poções Felix Felicis
+            for (const p of this.potions) {
+                if (!p.collected && Phaser.Math.Distance.Between(px, py, p.x, p.y) < 50) {
+                    p.collected = true;
+                    p.sprite.setVisible(false);
+                    p.glow.setVisible(false);
+                    this.felixTimer = 6.0;
+                    UI.hudFelix.classList.remove("hidden");
+                    SoundFX.playPotion();
+                    this.burstMagic(p.x, p.y, 24);
+                    this.addHousePoints(25, p.x, p.y);
+                }
             }
 
-            // Mini-Desafio Lumos (Fase 2)
-            if (this.currentStage.miniGame === "lumos" && !this.lumosSolved && !this.lumosActive && this.player.x >= 780) {
-                this.lumosActive = true;
-                this.tweens.add({ targets: this.darknessOverlay, alpha: 0.56, duration: 550 });
-                UI.btnLumos.classList.remove("hidden");
-                UI.challengeBanner.textContent = "🌑 Floresta escura! Toque em ✨ Lumos para iluminar!";
-                UI.challengeBanner.classList.remove("hidden");
+            // 3. Bilhetes Secretos e Pontos de Exploração próximos
+            let nearItem = null;
+            for (const it of this.interactables) {
+                if (it.type === "note" && it.done) continue;
+                if (Phaser.Math.Distance.Between(px, py, it.x, it.y) < 78) {
+                    nearItem = it;
+                    break;
+                }
+            }
+            this.activeInteractable = nearItem;
+            if (nearItem) {
+                UI.btnExplore.textContent = nearItem.label;
+                UI.btnExplore.classList.remove("hidden");
+            } else {
+                UI.btnExplore.classList.add("hidden");
             }
 
-            // Mini-Desafio Caça ao Pomo (Fase 3)
-            if (this.currentStage.miniGame === "snitch" && !this.snitchSolved && this.player.x >= 880) {
-                this.startSnitchHunt();
-                return;
+            // 4. Mini-Desafio Lumos na Floresta Proibida (SE)
+            const forestRegion = DATA.quizzes[1];
+            if (forestRegion.lumosZone && !this.lumosSolved && !this.lumosActive) {
+                const lz = forestRegion.lumosZone;
+                if (Phaser.Math.Distance.Between(px, py, lz.x, lz.y) < lz.radius) {
+                    this.lumosActive = true;
+                    this.tweens.add({ targets: this.darknessOverlay, alpha: 0.56, duration: 550 });
+                    UI.btnLumos.classList.remove("hidden");
+                    UI.showBanner("🌑 Floresta escura! Toque em ✨ Lumos (ou L) para iluminar!");
+                }
             }
 
-            // Checkpoint do Quiz da Fase
-            if (this.checkpoint && !this.stageQuizSolved && this.player.x >= this.checkpoint.worldX - 115) {
-                this.triggerQuiz();
-                return;
+            // 5. Mini-Desafio Caça ao Pomo no Campo de Quadribol (NE)
+            const quidditchRegion = DATA.quizzes[2];
+            if (quidditchRegion.snitchZone && !this.snitchSolved) {
+                const sz = quidditchRegion.snitchZone;
+                if (Phaser.Math.Distance.Between(px, py, sz.x, sz.y) < sz.radius) {
+                    this.startSnitchHunt(sz);
+                    return;
+                }
             }
 
-            // Avançar para próxima fase (Fases 1–4) ou Chegada Final (Fase 5)
-            if (!this.currentStage.isFinaleStage && this.stageQuizSolved && this.player.x >= this.exitX - 40) {
-                this.advanceToNextStage();
-            } else if (this.currentStage.isFinaleStage && this.stageQuizSolved && this.player.x >= this.finaleX - 140) {
-                this.triggerFinale();
+            // 6. Checkpoints de Quiz (em qualquer ordem!)
+            for (const cp of this.checkpoints) {
+                if (!cp.solved && Phaser.Math.Distance.Between(px, py, cp.x, cp.y) < 64) {
+                    this.triggerQuiz(cp);
+                    return;
+                }
+            }
+
+            // 7. Pátio da Grande Surpresa (quando os 5 quizzes estiverem resolvidos!)
+            if (!this.finaleDone && this.solvedIds.size >= DATA.quizzes.length) {
+                if (Phaser.Math.Distance.Between(px, py, DATA.finalePos.x, DATA.finalePos.y) < 88) {
+                    this.triggerFinale();
+                }
             }
         }
     }
 
+    // === Controles DOM & Joystick Virtual 360° ===
     UI.btnStart.addEventListener("click", () => {
         SoundFX.unlock();
         SoundFX.playChime();
@@ -1381,12 +1595,100 @@
         });
     }
 
-    const startWalkBtn = (e) => { e.preventDefault(); SoundFX.unlock(); InputState.touchWalk = true; };
-    const stopWalkBtn = (e) => { if (e) e.preventDefault(); InputState.touchWalk = false; };
-    UI.btnWalk.addEventListener("pointerdown", startWalkBtn);
-    UI.btnWalk.addEventListener("pointerup", stopWalkBtn);
-    UI.btnWalk.addEventListener("pointerleave", stopWalkBtn);
-    UI.btnWalk.addEventListener("pointercancel", stopWalkBtn);
+    if (UI.btnExplore) {
+        UI.btnExplore.addEventListener("click", () => {
+            SoundFX.unlock();
+            if (window.__heloraScene) window.__heloraScene.interactWithNearby();
+        });
+    }
+
+    if (UI.btnSprint) {
+        const startSprint = (e) => { e.preventDefault(); SoundFX.unlock(); InputState.touchSprint = true; UI.btnSprint.classList.add("active"); };
+        const stopSprint = (e) => { if (e) e.preventDefault(); InputState.touchSprint = false; UI.btnSprint.classList.remove("active"); };
+        UI.btnSprint.addEventListener("pointerdown", startSprint);
+        UI.btnSprint.addEventListener("pointerup", stopSprint);
+        UI.btnSprint.addEventListener("pointerleave", stopSprint);
+        UI.btnSprint.addEventListener("pointercancel", stopSprint);
+    }
+
+    if (UI.btnMap) {
+        UI.btnMap.addEventListener("click", () => {
+            SoundFX.unlock();
+            if (window.__heloraScene) window.__heloraScene.openMarauderMap();
+        });
+    }
+
+    if (UI.btnCloseMap) {
+        UI.btnCloseMap.addEventListener("click", () => {
+            UI.mapOverlay.classList.add("hidden");
+            if (window.__heloraScene && window.__heloraScene.state === "MODAL") {
+                window.__heloraScene.state = "WALKING";
+            }
+        });
+    }
+
+    if (UI.btnFreeRoam) {
+        UI.btnFreeRoam.addEventListener("click", () => {
+            UI.cardOverlay.classList.add("hidden");
+            UI.controlsBar.classList.remove("hidden");
+            if (window.__heloraScene) {
+                window.__heloraScene.state = "WALKING";
+            }
+        });
+    }
+
+    // Joystick Analógico Virtual 360° (touch + mouse)
+    if (UI.joystickZone && UI.joystickKnob) {
+        let joyPointerId = null;
+        const maxR = 34;
+
+        const updateJoystick = (clientX, clientY) => {
+            const rect = UI.joystickZone.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+            let dx = clientX - cx;
+            let dy = clientY - cy;
+            const dist = Math.hypot(dx, dy);
+            if (dist > maxR) {
+                dx = (dx / dist) * maxR;
+                dy = (dy / dist) * maxR;
+            }
+            UI.joystickKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+            InputState.joyX = dx / maxR;
+            InputState.joyY = dy / maxR;
+        };
+
+        const resetJoystick = () => {
+            joyPointerId = null;
+            InputState.joyActive = false;
+            InputState.joyX = 0;
+            InputState.joyY = 0;
+            UI.joystickKnob.style.transform = "translate(0px, 0px)";
+        };
+
+        UI.joystickZone.addEventListener("pointerdown", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            SoundFX.unlock();
+            joyPointerId = e.pointerId;
+            InputState.joyActive = true;
+            InputState.pointerWalk = false;
+            UI.joystickZone.setPointerCapture(e.pointerId);
+            updateJoystick(e.clientX, e.clientY);
+        });
+
+        UI.joystickZone.addEventListener("pointermove", (e) => {
+            if (!InputState.joyActive || e.pointerId !== joyPointerId) return;
+            e.preventDefault();
+            updateJoystick(e.clientX, e.clientY);
+        });
+
+        UI.joystickZone.addEventListener("pointerup", (e) => {
+            if (e.pointerId !== joyPointerId) return;
+            resetJoystick();
+        });
+        UI.joystickZone.addEventListener("pointercancel", resetJoystick);
+    }
 
     const game = new Phaser.Game({
         type: Phaser.AUTO,
@@ -1401,7 +1703,7 @@
             mode: Phaser.Scale.RESIZE,
             autoCenter: Phaser.Scale.NO_CENTER
         },
-        scene: [HogwartsJourneyScene]
+        scene: [HogwartsOverworldScene]
     });
 
     let resizeTimer = null;

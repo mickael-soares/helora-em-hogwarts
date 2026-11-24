@@ -124,6 +124,166 @@ html, body {
     gap: 10px;
 }
 
+.controls-left {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+}
+
+/* Virtual Analog Joystick (360° Open World) */
+.joystick-zone {
+    pointer-events: auto;
+    position: relative;
+    width: 112px;
+    height: 112px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(13, 43, 29, 0.72) 0%, rgba(10, 22, 18, 0.56) 100%);
+    border: 2.5px solid rgba(230, 194, 103, 0.78);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), inset 0 0 18px rgba(46, 163, 103, 0.25);
+    backdrop-filter: blur(4px);
+    touch-action: none;
+    cursor: grab;
+    flex-shrink: 0;
+}
+
+.joystick-zone:active {
+    cursor: grabbing;
+    border-color: #fff3c4;
+}
+
+.joystick-knob {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 46px;
+    height: 46px;
+    margin-left: -23px;
+    margin-top: -23px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #44e38e 0%, #1a5c3a 68%, #0d2b1d 100%);
+    border: 2.5px solid #f7df94;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.55), 0 0 14px rgba(46, 163, 103, 0.6);
+    pointer-events: none;
+    transition: transform 0.04s linear;
+}
+
+.joy-dir {
+    position: absolute;
+    font-size: 0.65rem;
+    color: rgba(230, 194, 103, 0.65);
+    pointer-events: none;
+}
+
+.joy-up { top: 6px; left: 50%; transform: translateX(-50%); }
+.joy-down { bottom: 6px; left: 50%; transform: translateX(-50%); }
+.joy-left { left: 8px; top: 50%; transform: translateY(-50%); }
+.joy-right { right: 8px; top: 50%; transform: translateY(-50%); }
+
+.hud-notes strong {
+    color: #ffe680;
+    font-weight: 800;
+}
+
+.card-btn-row {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.magic-btn-secondary {
+    background: linear-gradient(180deg, #523b24 0%, #2d1e12 100%);
+}
+
+/* Mapa do Maroto */
+.map-card {
+    max-width: 560px;
+}
+
+.map-title {
+    font-size: 1.45rem;
+    margin-bottom: 4px;
+}
+
+.map-sub {
+    font-size: 0.88rem;
+    color: #5b412a;
+    margin-bottom: 14px;
+}
+
+.map-regions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+    max-height: 46dvh;
+    overflow-y: auto;
+    text-align: left;
+}
+
+.map-row {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 12px;
+    border: 2px solid #c9a86a;
+    background: linear-gradient(180deg, #fffdf6 0%, #f4e4bf 100%);
+    color: #2b1d12;
+    font-family: 'Nunito', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    cursor: pointer;
+    transition: transform 0.12s ease, border-color 0.15s ease;
+}
+
+.map-row:hover:not(:disabled) {
+    border-color: var(--slytherin-mid);
+    transform: translateX(3px);
+}
+
+.map-row.current {
+    border-color: var(--slytherin-bright);
+    background: linear-gradient(180deg, #e7faef 0%, #cff1dd 100%);
+}
+
+.map-row:disabled {
+    opacity: 0.52;
+    cursor: not-allowed;
+}
+
+.map-row-name {
+    font-family: 'Cinzel', serif;
+    font-weight: 700;
+    font-size: 0.94rem;
+}
+
+.map-row-meta {
+    font-size: 0.78rem;
+    color: #5c442d;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.note-card {
+    max-width: 460px;
+}
+
+.note-title {
+    font-family: 'Cinzel', serif;
+    font-size: 1.2rem;
+    color: var(--slytherin-dark);
+    margin-bottom: 10px;
+}
+
+.note-body {
+    font-size: 0.98rem;
+    line-height: 1.55;
+    color: #362417;
+    margin-bottom: 18px;
+}
+
 .lumos-btn {
     pointer-events: auto;
     display: inline-flex;
@@ -141,6 +301,34 @@ html, body {
     box-shadow: 0 0 26px rgba(255, 232, 132, 0.85);
     animation: pulseGold 0.85s ease-in-out infinite alternate;
     touch-action: manipulation;
+}
+
+.sprint-btn {
+    pointer-events: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 20px;
+    border-radius: 999px;
+    border: 2px solid var(--gold);
+    background: linear-gradient(180deg, rgba(33, 115, 73, 0.9) 0%, rgba(14, 56, 35, 0.92) 100%);
+    color: #fff9e6;
+    font-family: 'Cinzel', serif;
+    font-size: 0.92rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.48);
+    touch-action: none;
+    transition: transform 0.1s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.sprint-btn.active,
+.sprint-btn:active {
+    transform: scale(0.95);
+    background: linear-gradient(180deg, #f3ce6c 0%, #b88424 100%);
+    color: #1f140c;
+    border-color: #fff6cc;
+    box-shadow: 0 0 22px rgba(255, 228, 132, 0.85);
 }
 
 .challenge-banner {
@@ -787,8 +975,9 @@ html, body {
         display: none;
     }
     #controls-bar {
-        justify-content: flex-end;
+        justify-content: space-between;
         bottom: max(16px, env(safe-area-inset-bottom));
+        left: max(14px, env(safe-area-inset-left));
         right: max(14px, env(safe-area-inset-right));
     }
     .walk-btn {
@@ -846,9 +1035,20 @@ html, body {
         height: 9px;
     }
     #controls-bar {
-        justify-content: flex-end;
+        justify-content: space-between;
         bottom: max(10px, env(safe-area-inset-bottom));
+        left: max(14px, env(safe-area-inset-left));
         right: max(14px, env(safe-area-inset-right));
+    }
+    .joystick-zone {
+        width: 96px;
+        height: 96px;
+    }
+    .joystick-knob {
+        width: 40px;
+        height: 40px;
+        margin-left: -20px;
+        margin-top: -20px;
     }
     .walk-btn {
         padding: 10px 20px;

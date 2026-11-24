@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=15">
+    <link rel="stylesheet" href="css/style.css?v=20">
 </head>
 <body>
     <div id="game-shell">
@@ -26,6 +26,10 @@
                     <span>🐍 Sonserina •</span>
                     <strong id="hud-points">0 pts</strong>
                 </div>
+                <div class="hud-pill hud-notes" title="Bilhetes secretos encontrados">
+                    <span>💌</span>
+                    <strong id="hud-notes">0/5</strong>
+                </div>
                 <div id="hud-felix" class="hud-pill hud-felix hidden">🧪 Sorte Líquida 2x!</div>
             </div>
             <div class="hud-right">
@@ -37,20 +41,28 @@
                     <span class="orb" data-idx="4"></span>
                     <span id="hud-count">0/5</span>
                 </div>
+                <button id="btn-map" class="hud-icon-btn" title="Mapa do Maroto" aria-label="Mapa do Maroto">🗺️</button>
                 <button id="btn-mute" class="hud-icon-btn" title="Som ligado/desligado" aria-label="Alternar som">🔊</button>
                 <button id="btn-fullscreen" class="hud-icon-btn" title="Tela cheia" aria-label="Tela cheia">⛶</button>
             </div>
         </header>
 
-        <!-- Controles Mobile / PC -->
+        <!-- Controles Mobile / PC (Mundo Aberto 360°: Joystick Analógico + Explorar + Lumos) -->
         <div id="controls-bar" class="hidden">
-            <div class="controls-hint">PC: seta → ou D &nbsp;|&nbsp; Celular: segure o botão &nbsp;|&nbsp; Toque no gatinho 🐱</div>
+            <div class="controls-left">
+                <div id="joystick-zone" class="joystick-zone" aria-label="Mover em todas as direções">
+                    <span class="joy-dir joy-up">▲</span>
+                    <span class="joy-dir joy-down">▼</span>
+                    <span class="joy-dir joy-left">◄</span>
+                    <span class="joy-dir joy-right">►</span>
+                    <div id="joystick-knob" class="joystick-knob"></div>
+                </div>
+                <div class="controls-hint">PC: WASD / ↑↓←→ • Shift correr • E explorar • M mapa &nbsp;|&nbsp; Toque no gatinho 🐱</div>
+            </div>
             <div class="controls-actions">
+                <button id="btn-explore" class="lumos-btn hidden" type="button">✨ Explorar</button>
                 <button id="btn-lumos" class="lumos-btn hidden" type="button">✨ Lumos!</button>
-                <button id="btn-walk" class="walk-btn" type="button">
-                    <span>Andar</span>
-                    <span class="walk-arrow">➜</span>
-                </button>
+                <button id="btn-sprint" class="sprint-btn" type="button" aria-label="Correr">⚡ Correr</button>
             </div>
         </div>
 
@@ -71,7 +83,7 @@
                 <p class="card-kicker">ESCOLA DE MAGIA E BRUXARIA DE HOGWARTS</p>
                 <h1 class="card-title">A Jornada Mágica da Helora</h1>
                 <p class="card-desc">
-                    Atravesse <strong>5 cenários mágicos</strong> do Beco Diagonal até o Castelo de Hogwarts, respondendo quizzes e mini-desafios para abrir sua surpresa de aniversário!
+                    Explore livremente o <strong>vale mágico de Hogwarts</strong> em todas as direções! Visite o Beco Diagonal, Floresta Proibida, Quadribol, Lago Negro e o Castelo na ordem que quiser para abrir sua surpresa de aniversário!
                 </p>
                 <button id="btn-start" class="magic-btn" type="button">Começar Aventura ✨</button>
             </div>
@@ -125,15 +137,40 @@
                 <div id="bday-message" class="bday-message"></div>
                 <p id="bday-stats" class="bday-stats"></p>
                 <p id="bday-signature" class="bday-signature"></p>
-                <button id="btn-replay" class="magic-btn" type="button">Jogar Novamente 🔄</button>
+                <div class="card-btn-row">
+                    <button id="btn-free-roam" class="magic-btn magic-btn-secondary" type="button">Continuar Explorando 🗺️</button>
+                    <button id="btn-replay" class="magic-btn" type="button">Jogar Novamente 🔄</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mapa do Maroto (Mundo Aberto + Viagem Rápida) -->
+        <div id="map-overlay" class="modal-backdrop hidden">
+            <div class="parchment-card map-card">
+                <div class="wax-seal wax-small">🗺️</div>
+                <p class="card-kicker">JURO SOLENEMENTE NÃO FAZER NADA DE BOM</p>
+                <h2 class="card-title map-title">Mapa do Maroto</h2>
+                <p class="map-sub">Mundo Aberto! Toque em qualquer região para viajar até lá ou caminhe livremente pelo mapa!</p>
+                <div id="map-regions" class="map-regions"></div>
+                <button id="btn-close-map" class="magic-btn" type="button">Malfeito Feito ✨</button>
+            </div>
+        </div>
+
+        <!-- Modal de Bilhete Secreto / Ponto de Exploração -->
+        <div id="note-overlay" class="modal-backdrop hidden">
+            <div class="parchment-card note-card">
+                <div class="wax-seal wax-small" id="note-seal">💌</div>
+                <h2 id="note-title" class="note-title"></h2>
+                <p id="note-body" class="note-body"></p>
+                <button id="btn-close-note" class="magic-btn" type="button">Continuar ✨</button>
             </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
-    <script src="js/assets_data.js?v=16"></script>
-    <script src="js/quizData.js?v=16"></script>
-    <script src="js/music.js?v=16"></script>
-    <script src="js/game.js?v=16"></script>
+    <script src="js/assets_data.js?v=20"></script>
+    <script src="js/quizData.js?v=20"></script>
+    <script src="js/music.js?v=20"></script>
+    <script src="js/game.js?v=20"></script>
 </body>
 </html>
