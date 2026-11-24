@@ -6,6 +6,8 @@ window.HELORA_QUIZ_DATA = {
     worldHeight: 1440,
     startPos: { x: 640, y: 1230 },
     finalePos: { x: 1280, y: 425 },
+    broomPos: { x: 2285, y: 425 },
+    towerPortalPos: { x: 1280, y: 210 },
 
     // 5 Regiões no mesmo mapa contínuo — 100% abertas desde o início!
     quizzes: [
@@ -215,6 +217,124 @@ window.HELORA_QUIZ_DATA = {
         { x: 2010, y: 1125 },
         { x: 2115, y: 985 }
     ],
+
+    // 2º Mundo Aberto: Interior do Castelo de Hogwarts (acesso voando até a Torre!)
+    castleWorld: {
+        bgKey: "castle_interior_map",
+        startPos: { x: 1280, y: 1125 },
+        exitPortalPos: { x: 1280, y: 1320 },
+        wings: [
+            {
+                id: "astronomy",
+                location: "Torre de Astronomia",
+                regionCenter: { x: 1280, y: 1120 },
+                travelPos: { x: 1280, y: 1125 },
+                exploreSpot: {
+                    x: 1475,
+                    y: 1090,
+                    label: "🔭 Telescópio Mágico",
+                    title: "Torre de Astronomia",
+                    text: "Pelo telescópio encantado, as estrelas desenham o nome 'HELORA' brilhando sobre todo o vale de Hogwarts! ✨"
+                }
+            },
+            {
+                id: "library",
+                location: "Biblioteca • Seção Reservada",
+                regionCenter: { x: 400, y: 740 },
+                travelPos: { x: 455, y: 760 },
+                quiz: {
+                    id: 6,
+                    propKey: "prop_owl",
+                    location: "Biblioteca de Hogwarts",
+                    x: 390,
+                    y: 725,
+                    question: "Qual livro mágico mostra onde cada pessoa está dentro do Castelo de Hogwarts?",
+                    options: [
+                        "O Mapa do Maroto",
+                        "O Livro Monstruoso dos Monstros",
+                        "Hogwarts: Uma História"
+                    ],
+                    correctIndex: 0,
+                    wrongHint: "Dica: você usa ele aqui no jogo apertando M! 🗺️",
+                    successMsg: "Malfeito Feito! +75 pts bônus para a Sonserina! 🗺️✨"
+                },
+                secretNote: {
+                    id: 6,
+                    x: 425,
+                    y: 410,
+                    title: "💌 Pergaminho Secreto — Biblioteca",
+                    text: "Você descobriu a Seção Reservada! Que a curiosidade e a sabedoria abram todas as portas incríveis da sua vida, Helora! 📚💚"
+                }
+            },
+            {
+                id: "potions",
+                location: "Masmorras de Poções",
+                regionCenter: { x: 2140, y: 740 },
+                travelPos: { x: 2050, y: 760 },
+                quiz: {
+                    id: 7,
+                    propKey: "decor_potion",
+                    location: "Masmorras de Poções",
+                    x: 2145,
+                    y: 440,
+                    question: "Qual poção dourada concede sorte extraordinária a quem a bebe?",
+                    options: [
+                        "Poção Polissuco",
+                        "Felix Felicis",
+                        "Veritaserum"
+                    ],
+                    correctIndex: 1,
+                    wrongHint: "Também conhecida como 'Sorte Líquida'...",
+                    successMsg: "Perfeito! Felix Felicis — sorte pura no seu novo ano! +75 pts! 🧪✨"
+                },
+                exploreSpot: {
+                    x: 2240,
+                    y: 855,
+                    label: "🧪 Caldeirão Borbulhante",
+                    title: "Aula de Poções da Sonserina",
+                    text: "Um caldeirão borbulha em verde-esmeralda liberando cheiro de bolo de aniversário recém-assado! 🎂💚"
+                }
+            },
+            {
+                id: "great_hall",
+                location: "Salão Principal • Sonserina",
+                regionCenter: { x: 1280, y: 380 },
+                travelPos: { x: 1280, y: 540 },
+                quiz: {
+                    id: 8,
+                    propKey: "prop_hat",
+                    location: "Salão Principal",
+                    x: 1280,
+                    y: 350,
+                    question: "Qual objeto mágico escolhe a casa de cada estudante no Salão Principal?",
+                    options: [
+                        "O Cálice de Fogo",
+                        "O Chapéu Seletor",
+                        "O Espelho de Ojesed"
+                    ],
+                    correctIndex: 1,
+                    wrongHint: "Ele fica na cabeça do aluno e grita: SONSERINA!",
+                    successMsg: "SONSERINA! O Chapéu Seletor aplaude a Helora! +75 pts! 🎩💚"
+                },
+                secretNote: {
+                    id: 7,
+                    x: 1280,
+                    y: 235,
+                    title: "💌 Carta Real — Salão Principal",
+                    text: "Você voou até a Torre e explorou o coração de Hogwarts! Feliz Aniversário, bruxinha incrível — o mundo mágico inteiro comemora com você! 🏰🎂✨"
+                }
+            }
+        ],
+        stars: [
+            { x: 1280, y: 940 }, { x: 1280, y: 740 }, { x: 1280, y: 560 },
+            { x: 960, y: 740 }, { x: 710, y: 740 }, { x: 560, y: 740 },
+            { x: 1600, y: 740 }, { x: 1850, y: 740 }, { x: 2010, y: 740 },
+            { x: 1280, y: 440 }, { x: 2145, y: 600 }, { x: 425, y: 560 }
+        ],
+        potions: [
+            { x: 2080, y: 950 }
+        ]
+    },
 
     // Irmão da Helora voando na vassoura (Sonserina)
     brother: {

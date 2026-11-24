@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=20">
+    <link rel="stylesheet" href="css/style.css?v=21">
 </head>
 <body>
     <div id="game-shell">
@@ -30,6 +30,7 @@
                     <span>💌</span>
                     <strong id="hud-notes">0/5</strong>
                 </div>
+                <div id="hud-broom" class="hud-pill hud-broom hidden" title="Vassoura Mágica desbloqueada">🧹 Vassoura</div>
                 <div id="hud-felix" class="hud-pill hud-felix hidden">🧪 Sorte Líquida 2x!</div>
             </div>
             <div class="hud-right">
@@ -57,11 +58,12 @@
                     <span class="joy-dir joy-right">►</span>
                     <div id="joystick-knob" class="joystick-knob"></div>
                 </div>
-                <div class="controls-hint">PC: WASD / ↑↓←→ • Shift correr • E explorar • M mapa &nbsp;|&nbsp; Toque no gatinho 🐱</div>
+                <div class="controls-hint">PC: WASD / ↑↓←→ • Shift correr • F voar • E explorar • M mapa &nbsp;|&nbsp; Toque no gatinho 🐱</div>
             </div>
             <div class="controls-actions">
                 <button id="btn-explore" class="lumos-btn hidden" type="button">✨ Explorar</button>
                 <button id="btn-lumos" class="lumos-btn hidden" type="button">✨ Lumos!</button>
+                <button id="btn-fly" class="fly-btn hidden" type="button" aria-label="Voar na vassoura">🧹 Voar</button>
                 <button id="btn-sprint" class="sprint-btn" type="button" aria-label="Correr">⚡ Correr</button>
             </div>
         </div>
@@ -168,9 +170,9 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
-    <script src="js/assets_data.js?v=20"></script>
-    <script src="js/quizData.js?v=20"></script>
-    <script src="js/music.js?v=20"></script>
-    <script src="js/game.js?v=20"></script>
+    <script src="js/assets_data.js?v=23"></script>
+    <script src="js/quizData.js?v=23"></script>
+    <script src="js/music.js?v=23"></script>
+    <script src="js/game.js?v=23"></script>
 </body>
 </html>

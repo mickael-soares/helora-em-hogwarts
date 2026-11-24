@@ -100,6 +100,7 @@
         hudLocation: document.getElementById("hud-location"),
         hudPoints: document.getElementById("hud-points"),
         hudNotes: document.getElementById("hud-notes"),
+        hudBroom: document.getElementById("hud-broom"),
         hudFelix: document.getElementById("hud-felix"),
         hudCount: document.getElementById("hud-count"),
         orbs: Array.from(document.querySelectorAll("#hud .orb")),
@@ -111,6 +112,7 @@
         joystickKnob: document.getElementById("joystick-knob"),
         btnExplore: document.getElementById("btn-explore"),
         btnLumos: document.getElementById("btn-lumos"),
+        btnFly: document.getElementById("btn-fly"),
         btnSprint: document.getElementById("btn-sprint"),
         challengeBanner: document.getElementById("challenge-banner"),
         mapOverlay: document.getElementById("map-overlay"),
@@ -193,8 +195,14 @@
         showMarauderMap(scene) {
             SoundFX.playPopup();
             this.mapRegions.innerHTML = "";
+
+            const sec1 = document.createElement("div");
+            sec1.className = "map-section-title";
+            sec1.textContent = "🌍 Vale de Hogwarts";
+            this.mapRegions.appendChild(sec1);
+
             DATA.quizzes.forEach((region, idx) => {
-                const isCurrent = idx === scene.currentRegionIdx;
+                const isCurrent = scene.activeWorld === "valley" && idx === scene.currentRegionIdx;
                 const quizDone = scene.solvedIds.has(region.id);
                 const noteDone = scene.foundNotes.has(region.id);
                 const row = document.createElement("button");
@@ -202,19 +210,61 @@
                 row.className = "map-row" + (isCurrent ? " current" : "");
                 const quizTag = quizDone ? "✓ Quiz" : "✦ Quiz";
                 const noteTag = noteDone ? "💌 Bilhete ✓" : "💌 Bilhete ?";
+                const extraTag = region.id === 3 && !scene.hasBroom ? " • 🧹 Vassoura!" : "";
                 row.innerHTML = `
                     <div>
                         <div class="map-row-name">${isCurrent ? "👣 " : ""}${region.id}. ${region.location}</div>
-                        <div class="map-row-meta"><span>${quizTag}</span><span>${noteTag}</span></div>
+                        <div class="map-row-meta"><span>${quizTag}</span><span>${noteTag}${extraTag}</span></div>
                     </div>
                     <span>${isCurrent ? "Aqui" : "Viajar ➜"}</span>
                 `;
                 row.addEventListener("click", () => {
                     this.mapOverlay.classList.add("hidden");
-                    scene.fastTravelTo(region);
+                    scene.fastTravelTo(region, "valley");
                 });
                 this.mapRegions.appendChild(row);
             });
+
+            const sec2 = document.createElement("div");
+            sec2.className = "map-section-title";
+            sec2.textContent = "🏰 Interior do Castelo de Hogwarts";
+            this.mapRegions.appendChild(sec2);
+
+            if (!scene.castleUnlocked) {
+                const lockedRow = document.createElement("button");
+                lockedRow.type = "button";
+                lockedRow.className = "map-row";
+                lockedRow.disabled = true;
+                lockedRow.innerHTML = `
+                    <div>
+                        <div class="map-row-name">🔒 Torre do Castelo</div>
+                        <div class="map-row-meta"><span>Encontre a 🧹 Vassoura no Quadribol e voe até a Torre!</span></div>
+                    </div>
+                    <span>🔒</span>
+                `;
+                this.mapRegions.appendChild(lockedRow);
+            } else {
+                DATA.castleWorld.wings.forEach((wing, idx) => {
+                    const isCurrent = scene.activeWorld === "castle" && idx === scene.currentCastleWingIdx;
+                    const row = document.createElement("button");
+                    row.type = "button";
+                    row.className = "map-row" + (isCurrent ? " current" : "");
+                    const qTag = wing.quiz ? (scene.bonusSolvedIds.has(wing.quiz.id) ? "✓ Quiz Bônus" : "✦ Quiz Bônus") : "🔭 Mirante";
+                    row.innerHTML = `
+                        <div>
+                            <div class="map-row-name">${isCurrent ? "👣 " : ""}${wing.location}</div>
+                            <div class="map-row-meta"><span>${qTag}</span></div>
+                        </div>
+                        <span>${isCurrent ? "Aqui" : "Viajar ➜"}</span>
+                    `;
+                    row.addEventListener("click", () => {
+                        this.mapOverlay.classList.add("hidden");
+                        scene.fastTravelTo(wing, "castle");
+                    });
+                    this.mapRegions.appendChild(row);
+                });
+            }
+
             this.mapOverlay.classList.remove("hidden");
         },
 
@@ -321,16 +371,20 @@
         }
 
         preload() {
-            // Mapa Contínuo Top-Down 3/4 + Camada Superior da Ponte (para passar por BAIXO!)
+            // Mapa Contínuo Top-Down 3/4 + Camada Superior da Ponte + Interior do Castelo
             this.load.image("overworld_map", ASSETS.overworld_map);
             this.load.image("overworld_bridge_overlay", ASSETS.overworld_bridge_overlay);
+            this.load.image("castle_interior_map", ASSETS.castle_interior_map);
 
-            // Helora nas 4 direções (100% intactos)
+            // Helora nas 4 direções + Corrida dedicada + Voo na Vassoura com o Gatinho!
             this.load.image("helora_idle", ASSETS.helora_idle);
             this.load.image("helora_celebrate", ASSETS.helora_celebrate);
+            this.load.image("helora_broom", ASSETS.helora_broom);
             this.load.spritesheet("helora_walk", ASSETS.helora_walk, { frameWidth: 256, frameHeight: 256 });
             this.load.spritesheet("helora_back_walk", ASSETS.helora_back_walk, { frameWidth: 256, frameHeight: 256 });
             this.load.spritesheet("helora_front_walk", ASSETS.helora_front_walk, { frameWidth: 256, frameHeight: 256 });
+            this.load.spritesheet("helora_run_side", ASSETS.helora_run_side, { frameWidth: 256, frameHeight: 256 });
+            this.load.spritesheet("helora_run_front", ASSETS.helora_run_front, { frameWidth: 256, frameHeight: 256 });
 
             // Gatinho nas 4 direções (todos com 4 frames fluidos!)
             this.load.image("kitten_idle", ASSETS.kitten_idle);
@@ -352,11 +406,20 @@
 
         create() {
             this.state = "INTRO"; // INTRO | WALKING | QUIZ | SNITCH_HUNT | MODAL | CELEBRATE | FINALE
+            this.activeWorld = "valley"; // "valley" | "castle"
             this.currentRegionIdx = 0;
+            this.currentCastleWingIdx = 0;
             this.solvedIds = new Set();
+            this.bonusSolvedIds = new Set();
             this.foundNotes = new Set();
             this.housePoints = 0;
             this.finaleDone = false;
+            this.hasBroom = false;
+            this.isFlying = false;
+            this.flyAlt = 0;
+            this.castleUnlocked = false;
+            this.valleyObjects = [];
+            this.castleObjects = [];
             this.lumosActive = false;
             this.lumosSolved = false;
             this.snitchSolved = false;
@@ -405,8 +468,16 @@
                 this.ambientFireflies.push(dot);
             }
 
-            // 3. Construir todos os elementos do Mundo Aberto
+            // 3. Construir todos os elementos dos 2 Mundos Abertos (Vale + Interior do Castelo)
+            const vStart = this.children.list.length;
             this.buildOpenWorldContent();
+            this.valleyObjects = [this.bridgeOverlay, ...this.children.list.slice(vStart)];
+
+            const cStart = this.children.list.length;
+            this.buildCastleWorldContent();
+            this.castleObjects = this.children.list.slice(cStart);
+
+            this.setWorldVisibility("valley");
 
             // 4. Gatinho Laranjinha (interativo para carinho!)
             const sx = DATA.startPos.x;
@@ -419,12 +490,17 @@
             this.kitten.setInteractive({ useHandCursor: true });
             this.kitten.on("pointerdown", () => this.petKitten());
 
-            // Aura Felix Felicis
+            // Aura Felix Felicis + Aura de Voo na Vassoura
             this.felixAura = this.add.image(sx, sy - 42, "soft_glow")
                 .setTint(0xffe066)
                 .setScale(1.15)
                 .setAlpha(0)
                 .setDepth(4.5);
+            this.flyAura = this.add.image(sx, sy - 20, "soft_glow")
+                .setTint(0x52f29b)
+                .setScale(1.25, 0.55)
+                .setAlpha(0)
+                .setDepth(4.4);
 
             // 5. Helora (Protagonista)
             this.playerShadow = this.add.ellipse(sx, sy, 52, 16, 0x080716, 0.46).setDepth(3.5);
@@ -448,6 +524,7 @@
             this.keyS = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S);
             this.keyD = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
             this.keyE = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
+            this.keyF = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F);
             this.keyM = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M);
             this.keyL = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.L);
             this.keyShift = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT);
@@ -534,6 +611,22 @@
                     repeat: -1
                 });
             }
+            if (!this.anims.exists("helora_run_side_anim")) {
+                this.anims.create({
+                    key: "helora_run_side_anim",
+                    frames: this.anims.generateFrameNumbers("helora_run_side", { start: 0, end: 3 }),
+                    frameRate: 10,
+                    repeat: -1
+                });
+            }
+            if (!this.anims.exists("helora_run_front_anim")) {
+                this.anims.create({
+                    key: "helora_run_front_anim",
+                    frames: this.anims.generateFrameNumbers("helora_run_front", { start: 0, end: 3 }),
+                    frameRate: 10,
+                    repeat: -1
+                });
+            }
             if (!this.anims.exists("kitten_walk_anim")) {
                 this.anims.create({
                     key: "kitten_walk_anim",
@@ -590,6 +683,7 @@
                     .setVisible(false)
                     .setAlpha(0)
                     .setDepth(5 + pt.y / 1000);
+                star._worldHidden = true;
                 this.tweens.add({
                     targets: star,
                     y: pt.y - 10,
@@ -763,6 +857,257 @@
                 .setScale(0.08)
                 .setAlpha(0)
                 .setDepth(5.1 + fy / 1000);
+
+            // 6. Vassoura Mágica escondida no Campo de Quadribol (libera Modo Voo!)
+            const bx = DATA.broomPos.x;
+            const by = DATA.broomPos.y;
+            this.broomGlow = this.add.image(bx, by, "soft_glow")
+                .setTint(0xffe066)
+                .setScale(0.85)
+                .setAlpha(0.75)
+                .setDepth(4.7 + by / 1000);
+            this.broomIcon = this.add.text(bx, by - 4, "🧹", { fontSize: "30px" })
+                .setOrigin(0.5)
+                .setDepth(5.2 + by / 1000);
+            this.broomLabel = this.add.text(bx, by - 36, "🧹 Vassoura Mágica", {
+                fontFamily: "Cinzel, serif",
+                fontSize: "13px",
+                fontStyle: "bold",
+                color: "#fff5b8",
+                backgroundColor: "rgba(13, 43, 29, 0.88)",
+                padding: { x: 8, y: 3 }
+            }).setOrigin(0.5).setDepth(12);
+            this.tweens.add({
+                targets: [this.broomIcon, this.broomGlow, this.broomLabel],
+                y: "-=10",
+                duration: 950,
+                yoyo: true,
+                repeat: -1,
+                ease: "Sine.easeInOut"
+            });
+
+            // 7. Portal Aéreo na Torre do Castelo de Hogwarts (só alcançável voando!)
+            const tx = DATA.towerPortalPos.x;
+            const ty = DATA.towerPortalPos.y;
+            this.towerGlow = this.add.image(tx, ty, "soft_glow")
+                .setTint(0x52f29b)
+                .setScale(1.25)
+                .setAlpha(0.72)
+                .setDepth(12.2);
+            this.towerLabel = this.add.text(tx, ty - 34, "🏰 Torre do Castelo • Voe aqui!", {
+                fontFamily: "Cinzel, serif",
+                fontSize: "14px",
+                fontStyle: "bold",
+                color: "#9effca",
+                backgroundColor: "rgba(13, 43, 29, 0.9)",
+                padding: { x: 10, y: 4 }
+            }).setOrigin(0.5).setDepth(12.5);
+            this.tweens.add({
+                targets: [this.towerGlow, this.towerLabel],
+                y: "-=8",
+                duration: 1050,
+                yoyo: true,
+                repeat: -1,
+                ease: "Sine.easeInOut"
+            });
+            this.interactables.push({
+                type: "enter_castle",
+                world: "valley",
+                requiresFlight: true,
+                x: tx,
+                y: ty,
+                label: "🏰 Entrar na Torre do Castelo",
+                done: false
+            });
+        }
+
+        buildCastleWorldContent() {
+            const cw = DATA.castleWorld;
+            this.castleStars = [];
+            this.castlePotions = [];
+            this.castleCheckpoints = [];
+            this.castleInteractables = [];
+
+            // Estrelas internas do Castelo
+            cw.stars.forEach((pt, i) => {
+                const star = this.add.image(pt.x, pt.y, "decor_star")
+                    .setScale(0.58)
+                    .setDepth(5 + pt.y / 1000);
+                this.tweens.add({
+                    targets: star,
+                    y: pt.y - 8,
+                    scale: 0.66,
+                    duration: 900 + (i % 5) * 110,
+                    yoyo: true,
+                    repeat: -1,
+                    ease: "Sine.easeInOut"
+                });
+                this.castleStars.push({ sprite: star, x: pt.x, y: pt.y, collected: false });
+            });
+
+            // Poções internas
+            cw.potions.forEach((p) => {
+                const glow = this.add.image(p.x, p.y, "soft_glow")
+                    .setTint(0xffe066).setScale(0.55).setAlpha(0.58).setDepth(4.8 + p.y / 1000);
+                const vial = this.add.image(p.x, p.y, "decor_potion")
+                    .setScale(0.58).setDepth(5 + p.y / 1000);
+                this.tweens.add({ targets: [vial, glow], y: p.y - 9, duration: 950, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+                this.castlePotions.push({ sprite: vial, glow, x: p.x, y: p.y, collected: false });
+            });
+
+            // 4 Alas do Castelo (Quizzes Bônus, Pergaminhos Secretos e Pontos de Exploração)
+            cw.wings.forEach((wing) => {
+                if (wing.quiz) {
+                    const q = wing.quiz;
+                    const glow = this.add.image(q.x, q.y, "soft_glow")
+                        .setTint(0xffe066).setScale(0.85, 0.45).setAlpha(0.58).setDepth(4.5 + q.y / 1000);
+                    const prop = this.add.image(q.x, q.y - 8, q.propKey)
+                        .setOrigin(0.5, 0.85).setScale(0.42).setDepth(5 + q.y / 1000);
+                    const marker = this.add.text(q.x, q.y - 68, `★ Quiz Bônus • ${q.location}`, {
+                        fontFamily: "Cinzel, serif", fontSize: "15px", fontStyle: "bold",
+                        color: "#ffe680", backgroundColor: "rgba(13, 43, 29, 0.9)", padding: { x: 9, y: 4 }
+                    }).setOrigin(0.5).setDepth(12);
+                    this.tweens.add({ targets: [prop, marker], y: "-=7", duration: 1050, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+                    this.castleCheckpoints.push({ quiz: q, isBonus: true, x: q.x, y: q.y, prop, glow, marker, solved: false });
+                }
+
+                if (wing.secretNote) {
+                    const n = wing.secretNote;
+                    const nglow = this.add.image(n.x, n.y, "soft_glow")
+                        .setTint(0xffe680).setScale(0.55).setAlpha(0.65).setDepth(4.6 + n.y / 1000);
+                    const nicon = this.add.text(n.x, n.y, "💌", { fontSize: "26px" })
+                        .setOrigin(0.5).setDepth(5.2 + n.y / 1000);
+                    this.tweens.add({ targets: [nicon, nglow], y: "-=9", duration: 920, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+                    this.castleInteractables.push({
+                        type: "castle_note",
+                        noteId: n.id,
+                        x: n.x,
+                        y: n.y,
+                        sprite: nicon,
+                        glow: nglow,
+                        label: "💌 Ler Pergaminho Secreto",
+                        data: n,
+                        done: false
+                    });
+                }
+
+                if (wing.exploreSpot) {
+                    const s = wing.exploreSpot;
+                    const badge = this.add.text(s.x, s.y - 26, s.label, {
+                        fontFamily: "Nunito, sans-serif", fontSize: "13px", fontStyle: "bold",
+                        color: "#fff5d6", backgroundColor: "rgba(18, 36, 46, 0.86)", padding: { x: 8, y: 4 }
+                    }).setOrigin(0.5).setDepth(11.5);
+                    this.tweens.add({ targets: badge, y: s.y - 32, duration: 1100, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+                    this.castleInteractables.push({
+                        type: "spot",
+                        x: s.x,
+                        y: s.y,
+                        sprite: badge,
+                        label: `✨ ${s.label}`,
+                        data: s,
+                        done: false
+                    });
+                }
+            });
+
+            // Portal de Saída (volta para o Vale de Hogwarts!)
+            const ex = cw.exitPortalPos.x;
+            const ey = cw.exitPortalPos.y;
+            const eglow = this.add.image(ex, ey, "soft_glow")
+                .setTint(0x52f29b).setScale(1.2, 0.55).setAlpha(0.75).setDepth(4.4);
+            const elabel = this.add.text(ex, ey - 36, "🌍 Voltar ao Vale de Hogwarts", {
+                fontFamily: "Cinzel, serif", fontSize: "14px", fontStyle: "bold",
+                color: "#9effca", backgroundColor: "rgba(13, 43, 29, 0.9)", padding: { x: 10, y: 4 }
+            }).setOrigin(0.5).setDepth(12);
+            this.tweens.add({ targets: [eglow, elabel], y: "-=6", duration: 1000, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+            this.castleInteractables.push({
+                type: "exit_castle",
+                x: ex,
+                y: ey,
+                label: "🌍 Voltar ao Vale de Hogwarts",
+                done: false
+            });
+        }
+
+        setWorldVisibility(world) {
+            const isValley = world === "valley";
+            this.valleyObjects.forEach((o) => {
+                if (o && o.setVisible) o.setVisible(isValley && !o._worldHidden);
+            });
+            this.castleObjects.forEach((o) => {
+                if (o && o.setVisible) o.setVisible(!isValley && !o._worldHidden);
+            });
+            if (this.isacBg) this.isacBg.setVisible(isValley && !this.finaleDone);
+            if (!isValley) {
+                this.darknessOverlay.setAlpha(0);
+                UI.btnLumos.classList.add("hidden");
+            }
+        }
+
+        switchWorld(targetWorld, spawnPos, bannerMsg) {
+            SoundFX.playSpellCast();
+            this.velX = 0;
+            this.velY = 0;
+            InputState.pointerWalk = false;
+            this.isFlying = false;
+            this.flyAlt = 0;
+            if (UI.btnFly) {
+                UI.btnFly.classList.remove("flying");
+                UI.btnFly.textContent = "🧹 Voar";
+                UI.btnFly.classList.toggle("hidden", !this.hasBroom || targetWorld !== "valley");
+            }
+            this.flyAura.setAlpha(0);
+
+            this.cameras.main.fadeOut(280, 7, 10, 20);
+            this.cameras.main.once("camerafadeoutcomplete", () => {
+                this.activeWorld = targetWorld;
+                if (window.MagicMusic) window.MagicMusic.setWorld(targetWorld);
+                if (targetWorld === "castle") {
+                    this.castleUnlocked = true;
+                    this.mapBg.setTexture(DATA.castleWorld.bgKey).setDisplaySize(WORLD_W, WORLD_H);
+                } else {
+                    this.mapBg.setTexture("overworld_map").setDisplaySize(WORLD_W, WORLD_H);
+                }
+                this.setWorldVisibility(targetWorld);
+                this.player.setPosition(spawnPos.x, spawnPos.y);
+                this.kitten.setPosition(spawnPos.x - 62, spawnPos.y + 8);
+                this.updateCurrentRegion(true);
+                this.cameras.main.fadeIn(320, 7, 10, 20);
+                this.burstMagic(spawnPos.x, spawnPos.y - 26, 26);
+                if (bannerMsg) UI.showBanner(bannerMsg, 3400);
+                this.state = "WALKING";
+            });
+        }
+
+        toggleFly() {
+            if (!this.hasBroom || this.state !== "WALKING") return;
+            if (this.activeWorld !== "valley") {
+                UI.showBanner("🏰 Não é permitido voar dentro do Castelo!", 2200);
+                return;
+            }
+            if (!this.isFlying) {
+                this.isFlying = true;
+                SoundFX.playSpellCast();
+                this.burstMagic(this.player.x, this.player.y - 20, 22);
+                if (UI.btnFly) {
+                    UI.btnFly.classList.add("flying");
+                    UI.btnFly.textContent = "⬇️ Pousar";
+                }
+                UI.showBanner("🧹 Voando! Suba até a 🏰 Torre do Castelo de Hogwarts!", 3000);
+            } else {
+                if (this.isBlockedOnGround(this.player.x, this.player.y)) {
+                    SoundFX.playWrong();
+                    UI.showBanner("🌿 Voe para uma estrada ou espaço aberto para pousar!", 2200);
+                    return;
+                }
+                this.isFlying = false;
+                SoundFX.playCollect();
+                this.burstMagic(this.player.x, this.player.y, 14);
+                if (UI.btnFly) {
+                    UI.btnFly.classList.remove("flying");
+                    UI.btnFly.textContent = "🧹 Voar";
+                }
+            }
         }
 
         applyResponsiveCamera(screenW, screenH) {
@@ -873,7 +1218,11 @@
             UI.showMarauderMap(this);
         }
 
-        fastTravelTo(region) {
+        fastTravelTo(region, targetWorld = "valley") {
+            if (targetWorld !== this.activeWorld) {
+                this.switchWorld(targetWorld, region.travelPos, `🗺️ Chegou em ${region.location}!`);
+                return;
+            }
             SoundFX.playSpellCast();
             this.burstMagic(this.player.x, this.player.y - 30, 18);
             this.player.setPosition(region.travelPos.x, region.travelPos.y);
@@ -889,19 +1238,37 @@
         interactWithNearby() {
             if (this.state !== "WALKING" || !this.activeInteractable) return;
             const item = this.activeInteractable;
+            UI.btnExplore.classList.add("hidden");
+
+            if (item.type === "enter_castle") {
+                this.state = "MODAL";
+                this.switchWorld("castle", DATA.castleWorld.startPos, "🏰 Bem-vinda ao Interior do Castelo de Hogwarts!");
+                return;
+            }
+            if (item.type === "exit_castle") {
+                this.state = "MODAL";
+                this.switchWorld("valley", { x: 1280, y: 690 }, "🌍 De volta ao Vale de Hogwarts!");
+                return;
+            }
+
             this.state = "MODAL";
             this.velX = 0;
             this.velY = 0;
             InputState.pointerWalk = false;
-            UI.btnExplore.classList.add("hidden");
 
-            if (item.type === "note") {
+            if (item.type === "note" || item.type === "castle_note") {
                 if (!item.done) {
                     item.done = true;
-                    this.foundNotes.add(item.regionId);
-                    UI.updateNotes(this.foundNotes.size);
+                    if (item.type === "note") {
+                        this.foundNotes.add(item.regionId);
+                        UI.updateNotes(this.foundNotes.size);
+                    }
+                    item.sprite._worldHidden = true;
                     item.sprite.setVisible(false);
-                    if (item.glow) item.glow.setVisible(false);
+                    if (item.glow) {
+                        item.glow._worldHidden = true;
+                        item.glow.setVisible(false);
+                    }
                     this.burstMagic(item.x, item.y, 20);
                     this.addHousePoints(30, item.x, item.y);
                 }
@@ -941,6 +1308,7 @@
             // Revelar 3 estrelas secretas da Floresta Proibida
             this.collectibleStars.forEach((st) => {
                 if (st.secret && !st.collected) {
+                    st.sprite._worldHidden = false;
                     st.sprite.setVisible(true);
                     this.tweens.add({ targets: st.sprite, alpha: 1, duration: 450 });
                 }
@@ -1017,24 +1385,33 @@
 
             UI.showQuiz(cp.quiz, () => {
                 cp.solved = true;
-                this.solvedIds.add(cp.quiz.id);
-                cp.marker.setText(`✓ ${cp.quiz.location}`);
-                cp.marker.setColor("#7affb2");
-                cp.glow.setTint(0xffe484).setAlpha(0.32);
-
-                this.addHousePoints(50, this.player.x, this.player.y - 36);
-                this.burstMagic(this.player.x, this.player.y - 36, 26);
-
-                const solvedCount = this.solvedIds.size;
-                UI.updateProgress(solvedCount, DATA.quizzes[this.currentRegionIdx].location);
-
-                if (solvedCount >= DATA.quizzes.length) {
-                    this.finaleLabel.setText("🎂 Pátio da Surpresa • ENTRE AQUI! ✨");
-                    this.finaleLabel.setColor("#fff2a6");
-                    this.finaleGlow.setAlpha(0.85);
-                    UI.showBanner("✨ Todos os 5 quizzes resolvidos! Vá ao Pátio de Hogwarts! 🎂", 5000);
+                if (cp.isBonus) {
+                    this.bonusSolvedIds.add(cp.quiz.id);
+                    cp.marker.setText(`✓ ${cp.quiz.location}`);
+                    cp.marker.setColor("#7affb2");
+                    cp.glow.setTint(0xffe484).setAlpha(0.32);
+                    this.addHousePoints(75, this.player.x, this.player.y - 36);
+                    this.burstMagic(this.player.x, this.player.y - 36, 28);
                 } else {
-                    this.finaleLabel.setText(`🎂 Pátio da Surpresa (${solvedCount}/5 quizzes)`);
+                    this.solvedIds.add(cp.quiz.id);
+                    cp.marker.setText(`✓ ${cp.quiz.location}`);
+                    cp.marker.setColor("#7affb2");
+                    cp.glow.setTint(0xffe484).setAlpha(0.32);
+
+                    this.addHousePoints(50, this.player.x, this.player.y - 36);
+                    this.burstMagic(this.player.x, this.player.y - 36, 26);
+
+                    const solvedCount = this.solvedIds.size;
+                    UI.updateProgress(solvedCount, DATA.quizzes[this.currentRegionIdx].location);
+
+                    if (solvedCount >= DATA.quizzes.length) {
+                        this.finaleLabel.setText("🎂 Pátio da Surpresa • ENTRE AQUI! ✨");
+                        this.finaleLabel.setColor("#fff2a6");
+                        this.finaleGlow.setAlpha(0.85);
+                        UI.showBanner("✨ Todos os 5 quizzes resolvidos! Vá ao Pátio de Hogwarts! 🎂", 5000);
+                    } else {
+                        this.finaleLabel.setText(`🎂 Pátio da Surpresa (${solvedCount}/5 quizzes)`);
+                    }
                 }
 
                 this.state = "CELEBRATE";
@@ -1159,6 +1536,23 @@
         }
 
         updateCurrentRegion(force = false) {
+            if (this.activeWorld === "castle") {
+                let bestIdx = 0;
+                let bestDist = Infinity;
+                DATA.castleWorld.wings.forEach((w, idx) => {
+                    const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, w.regionCenter.x, w.regionCenter.y);
+                    if (d < bestDist) {
+                        bestDist = d;
+                        bestIdx = idx;
+                    }
+                });
+                if (force || bestIdx !== this.currentCastleWingIdx) {
+                    this.currentCastleWingIdx = bestIdx;
+                    UI.updateProgress(this.solvedIds.size, `🏰 ${DATA.castleWorld.wings[bestIdx].location}`);
+                }
+                return;
+            }
+
             let bestIdx = 0;
             let bestDist = Infinity;
             DATA.quizzes.forEach((r, idx) => {
@@ -1174,41 +1568,59 @@
             }
         }
 
-        applyWalkableBounds(nx, ny) {
-            let x = Phaser.Math.Clamp(nx, 70, WORLD_W - 70);
-            let y = Phaser.Math.Clamp(ny, 210, WORLD_H - 42);
-
-            // Colisões completas do vale (árvores, casas, muralhas, Lago Negro, aterros/pilares da ponte — túnel da ponte e portão do castelo LIVRES!)
-            const solids = [
-                // Lago Negro (NW)
+        getValleySolids() {
+            return [
                 { x1: 0, y1: 0, x2: 530, y2: 430 },
                 { x1: 530, y1: 0, x2: 715, y2: 290 },
-                // Pinheiros ao norte do Castelo / Quadribol
                 { x1: 715, y1: 0, x2: 880, y2: 265 },
-                { x1: 860, y1: 0, x2: 1730, y2: 345 },     // Telhados do Castelo de Hogwarts
-                { x1: 1730, y1: 0, x2: 2560, y2: 190 },    // Pinheiros atrás do Quadribol
-                // Muralhas laterais do Castelo (portão central x:1218..1342 aberto!)
+                { x1: 860, y1: 0, x2: 1730, y2: 345 },
+                { x1: 1730, y1: 0, x2: 2560, y2: 190 },
                 { x1: 890, y1: 480, x2: 1218, y2: 605 },
                 { x1: 1342, y1: 480, x2: 1670, y2: 605 },
-                // Beco Diagonal — árvores oeste + fileira superior de lojas + casas inferiores
                 { x1: 0, y1: 560, x2: 280, y2: 830 },
                 { x1: 0, y1: 790, x2: 470, y2: 1095 },
                 { x1: 520, y1: 790, x2: 940, y2: 1125 },
                 { x1: 0, y1: 1295, x2: 440, y2: 1440 },
                 { x1: 530, y1: 1300, x2: 860, y2: 1440 },
-                // Mata da Floresta Proibida (entre avenida central, Quadribol e clareira de cogumelos)
                 { x1: 1545, y1: 785, x2: 1885, y2: 1030 },
                 { x1: 1885, y1: 685, x2: 2430, y2: 915 },
                 { x1: 2385, y1: 480, x2: 2560, y2: 960 },
                 { x1: 1580, y1: 1185, x2: 2040, y2: 1440 },
-                // Ponte / Viaduto de Pedra: bloqueia trilhos laterais e pilares, deixando o arco (túnel) livre para passar por BAIXO!
-                { x1: 1900, y1: 1280, x2: 2150, y2: 1440 }, // Aterro esquerdo dos trilhos
-                { x1: 2385, y1: 920, x2: 2560, y2: 1130 },  // Aterro direito dos trilhos
-                { x1: 2145, y1: 1255, x2: 2228, y2: 1385 }, // Pilar esquerdo do arco
-                { x1: 2385, y1: 1110, x2: 2475, y2: 1275 }  // Pilar direito do arco
+                { x1: 1900, y1: 1280, x2: 2150, y2: 1440 },
+                { x1: 2385, y1: 920, x2: 2560, y2: 1130 },
+                { x1: 2145, y1: 1255, x2: 2228, y2: 1385 },
+                { x1: 2385, y1: 1110, x2: 2475, y2: 1275 }
             ];
+        }
 
-            // 2 passagens para deslizar suavemente em cantos
+        isBlockedOnGround(x, y) {
+            if (y < 210) return true;
+            for (const r of this.getValleySolids()) {
+                if (x > r.x1 && x < r.x2 && y > r.y1 && y < r.y2) return true;
+            }
+            return false;
+        }
+
+        applyWalkableBounds(nx, ny, ignoreSolids = false) {
+            // No modo voo, Helora pode sobrevoar todo o vale e alcançar o topo da Torre do Castelo!
+            if (ignoreSolids) {
+                return {
+                    x: Phaser.Math.Clamp(nx, 70, WORLD_W - 70),
+                    y: Phaser.Math.Clamp(ny, 130, WORLD_H - 42)
+                };
+            }
+
+            if (this.activeWorld === "castle") {
+                return {
+                    x: Phaser.Math.Clamp(nx, 150, WORLD_W - 150),
+                    y: Phaser.Math.Clamp(ny, 240, WORLD_H - 95)
+                };
+            }
+
+            let x = Phaser.Math.Clamp(nx, 70, WORLD_W - 70);
+            let y = Phaser.Math.Clamp(ny, 210, WORLD_H - 42);
+            const solids = this.getValleySolids();
+
             for (let pass = 0; pass < 2; pass++) {
                 for (const r of solids) {
                     if (x > r.x1 && x < r.x2 && y > r.y1 && y < r.y2) {
@@ -1266,10 +1678,13 @@
                 }
             }
 
-            // Atalhos de teclado (M = Mapa, E = Explorar, L = Lumos)
+            // Atalhos de teclado (M = Mapa, E = Explorar, L = Lumos, F = Voar na Vassoura)
             if (Phaser.Input.Keyboard.JustDown(this.keyM) && this.state === "WALKING") {
                 this.openMarauderMap();
                 return;
+            }
+            if (Phaser.Input.Keyboard.JustDown(this.keyF) && this.state === "WALKING" && this.hasBroom) {
+                this.toggleFly();
             }
             if (Phaser.Input.Keyboard.JustDown(this.keyE) && this.state === "WALKING" && this.activeInteractable) {
                 this.interactWithNearby();
@@ -1277,6 +1692,17 @@
             }
             if (Phaser.Input.Keyboard.JustDown(this.keyL) && this.lumosActive) {
                 this.castLumos();
+            }
+
+            // Altitude suave do Modo Voo
+            const targetAlt = this.isFlying ? (38 + Math.sin(time * 0.005) * 6) : 0;
+            this.flyAlt += (targetAlt - this.flyAlt) * Math.min(1, 9 * dt);
+            if (this.flyAlt > 2) {
+                this.flyAura.setPosition(this.player.x, this.player.y - this.flyAlt * 0.55);
+                this.flyAura.setAlpha(0.45 + Math.sin(time * 0.008) * 0.12);
+                this.flyAura.setDepth(this.isFlying ? 12.7 : 4.4);
+            } else {
+                this.flyAura.setAlpha(0);
             }
 
             if (this.state !== "WALKING") {
@@ -1317,22 +1743,44 @@
                 inY /= mag;
             }
 
-            let activeSpeed = WALK_SPEED * (isSprinting ? 1.55 : 1.0);
+            let activeSpeed = WALK_SPEED * (this.isFlying ? 1.82 : (isSprinting ? 1.55 : 1.0));
             if (this.felixTimer > 0) activeSpeed *= 1.25;
             const targetVX = inX * activeSpeed;
             const targetVY = inY * activeSpeed;
-            const smooth = Math.min(1, (isSprinting ? 13 : 10) * dt);
+            const smooth = Math.min(1, (this.isFlying ? 7.5 : (isSprinting ? 13 : 10)) * dt);
             this.velX += (targetVX - this.velX) * smooth;
             this.velY += (targetVY - this.velY) * smooth;
 
             const speed = Math.hypot(this.velX, this.velY);
             const isMoving = speed > 10;
-            this.playerSprinting = isMoving && isSprinting;
+            this.playerSprinting = isMoving && (isSprinting || this.isFlying);
 
-            if (isMoving) {
+            if (this.isFlying) {
+                // Helora voando na vassoura com o gatinho sentado na ponta!
+                if (this.player.anims.isPlaying) this.player.anims.stop();
+                this.player.setTexture("helora_broom");
+                if (this.velX < -15) this.player.setFlipX(true);
+                else if (this.velX > 15) this.player.setFlipX(false);
+                this.player.setScale(0.48);
+                this.player.setAngle(Math.sin(time * 0.006) * 2.5);
+                this.kitten.setVisible(false);
+                this.kittenShadow.setVisible(false);
+
+                this.particleTimer += dt;
+                if (this.particleTimer > 0.08) {
+                    this.particleTimer = 0;
+                    const tailDir = this.player.flipX ? 1 : -1;
+                    const sp = this.add.image(this.player.x + tailDir * 36, this.player.y - this.flyAlt - 12, "sparkle_dot")
+                        .setTint(Math.random() > 0.45 ? 0xffe484 : 0x52f29b).setScale(Phaser.Math.FloatBetween(0.22, 0.45)).setDepth(12.8);
+                    this.tweens.add({ targets: sp, x: sp.x + tailDir * 22, alpha: 0, scale: 0.06, duration: 420, onComplete: () => sp.destroy() });
+                }
+            } else if (isMoving) {
+                this.kitten.setVisible(true);
+                this.kittenShadow.setVisible(true);
                 const nextPos = this.applyWalkableBounds(
                     this.player.x + this.velX * dt,
-                    this.player.y + this.velY * dt
+                    this.player.y + this.velY * dt,
+                    false
                 );
                 this.player.x = nextPos.x;
                 this.player.y = nextPos.y;
@@ -1340,12 +1788,13 @@
                 const speedRatio = Math.min(1.55, speed / WALK_SPEED);
                 this.walkPhase += dt * (isSprinting ? 14.5 : (7.5 + speedRatio * 4.5));
 
-                // Escolher sprite e animação exatos das 4 direções!
+                // Escolher sprite dedicado de CORRIDA ou CAMINHADA nas 4 direções!
                 if (Math.abs(this.velX) >= Math.abs(this.velY) * 0.85) {
                     this.facing = this.velX >= 0 ? "right" : "left";
                     this.player.setFlipX(this.velX < 0);
-                    if (this.player.anims.currentAnim?.key !== "helora_walk_anim" || !this.player.anims.isPlaying) {
-                        this.player.play("helora_walk_anim", true);
+                    const animKey = isSprinting ? "helora_run_side_anim" : "helora_walk_anim";
+                    if (this.player.anims.currentAnim?.key !== animKey || !this.player.anims.isPlaying) {
+                        this.player.play(animKey, true);
                     }
                 } else if (this.velY < 0) {
                     this.facing = "up";
@@ -1356,17 +1805,16 @@
                 } else {
                     this.facing = "down";
                     this.player.setFlipX(false);
-                    if (this.player.anims.currentAnim?.key !== "helora_front_anim" || !this.player.anims.isPlaying) {
-                        this.player.play("helora_front_anim", true);
+                    const animKey = isSprinting ? "helora_run_front_anim" : "helora_front_anim";
+                    if (this.player.anims.currentAnim?.key !== animKey || !this.player.anims.isPlaying) {
+                        this.player.play(animKey, true);
                     }
                 }
 
-                this.player.anims.timeScale = isSprinting ? 1.48 : (0.75 + Math.min(1, speedRatio) * 0.35);
+                this.player.anims.timeScale = isSprinting ? 1.18 : (0.75 + Math.min(1, speedRatio) * 0.35);
                 this.player.setScale(HELORA_SCALE);
                 this.player.setAngle(0);
-                // Leve bounce vertical limpo sem inclinar ou deformar o sprite
-                const strideLift = isSprinting ? Math.abs(Math.sin(this.walkPhase)) * 3.8 : Math.abs(Math.sin(this.walkPhase)) * 1.4;
-                this.playerVisualOffsetY = -strideLift;
+                this.playerVisualOffsetY = isSprinting ? 0 : -Math.abs(Math.sin(this.walkPhase)) * 1.4;
 
                 // Poeira mágica dos passos (mais intensa na corridinha!)
                 this.stepDustTimer += dt * speedRatio;
@@ -1390,6 +1838,8 @@
                     this.tweens.add({ targets: sp, y: sp.y - 16, alpha: 0, duration: 400, onComplete: () => sp.destroy() });
                 }
             } else {
+                this.kitten.setVisible(true);
+                this.kittenShadow.setVisible(true);
                 this.velX = 0;
                 this.velY = 0;
                 this.playerSprinting = false;
@@ -1406,13 +1856,23 @@
                 this.player.setAngle(0);
             }
 
-            this.player.setDepth(5 + this.player.y / 1000);
-            this.playerShadow.setPosition(this.player.x, this.player.y + 2);
-            if (isMoving && this.playerVisualOffsetY) {
-                this.player.setOrigin(0.5, 0.92 - this.playerVisualOffsetY / 256);
-            } else {
-                this.player.setOrigin(0.5, 0.92);
+            if (this.isFlying && isMoving) {
+                const nextFly = this.applyWalkableBounds(
+                    this.player.x + this.velX * dt,
+                    this.player.y + this.velY * dt,
+                    true
+                );
+                this.player.x = nextFly.x;
+                this.player.y = nextFly.y;
+                this.kitten.setPosition(this.player.x - 55, this.player.y + 8);
             }
+
+            this.player.setDepth(this.isFlying ? 12.9 : (5 + this.player.y / 1000));
+            this.playerShadow.setPosition(this.player.x, this.player.y + 4);
+            this.playerShadow.setScale(this.isFlying ? 0.68 : 1);
+            this.playerShadow.setAlpha(this.isFlying ? 0.28 : 0.46);
+            const totalLift = this.flyAlt + (isMoving && !this.isFlying && this.playerVisualOffsetY ? -this.playerVisualOffsetY : 0);
+            this.player.setOrigin(0.5, 0.92 + totalLift / (256 * HELORA_SCALE));
 
             this.updateKittenFollow(dt, time, isMoving);
             this.updateCurrentRegion(false);
@@ -1431,8 +1891,8 @@
                 const vx = (dx / dist) * moveDist;
                 const vy = (dy / dist) * moveDist;
 
-                // Gatinho também respeita TODAS as colisões de árvores, casas e pilares!
-                const kNext = this.applyWalkableBounds(this.kitten.x + vx, this.kitten.y + vy);
+                // Gatinho acompanha no ar durante o voo ou respeita colisões no chão!
+                const kNext = this.applyWalkableBounds(this.kitten.x + vx, this.kitten.y + vy, this.isFlying);
                 this.kitten.x = kNext.x;
                 this.kitten.y = kNext.y;
 
@@ -1466,18 +1926,87 @@
                 this.kitten.setAngle(0);
             }
 
-            this.kitten.setDepth(5 + this.kitten.y / 1000);
-            this.kittenShadow.setPosition(this.kitten.x, this.kitten.y + 2);
+            this.kitten.setDepth(this.isFlying ? 12.85 : (5 + this.kitten.y / 1000));
+            this.kitten.setOrigin(0.5, 0.92 + (this.flyAlt * 0.9) / (128 * KITTEN_SCALE));
+            this.kittenShadow.setPosition(this.kitten.x, this.kitten.y + 3);
+            this.kittenShadow.setScale(this.isFlying ? 0.65 : 1);
+            this.kittenShadow.setAlpha(this.isFlying ? 0.25 : 0.4);
         }
 
         checkWorldInteractions() {
             const px = this.player.x;
             const py = this.player.y;
 
+            if (this.activeWorld === "castle") {
+                for (const st of this.castleStars) {
+                    if (!st.collected && Phaser.Math.Distance.Between(px, py, st.x, st.y) < 48) {
+                        st.collected = true;
+                        st.sprite._worldHidden = true;
+                        st.sprite.setVisible(false);
+                        SoundFX.playCollect();
+                        this.burstMagic(st.x, st.y, 12);
+                        this.addHousePoints(15, st.x, st.y);
+                    }
+                }
+                for (const p of this.castlePotions) {
+                    if (!p.collected && Phaser.Math.Distance.Between(px, py, p.x, p.y) < 52) {
+                        p.collected = true;
+                        p.sprite._worldHidden = true;
+                        p.glow._worldHidden = true;
+                        p.sprite.setVisible(false);
+                        p.glow.setVisible(false);
+                        this.felixTimer = 6.0;
+                        UI.hudFelix.classList.remove("hidden");
+                        SoundFX.playPotion();
+                        this.burstMagic(p.x, p.y, 24);
+                        this.addHousePoints(25, p.x, p.y);
+                    }
+                }
+                let nearItem = null;
+                for (const it of this.castleInteractables) {
+                    if (it.type === "castle_note" && it.done) continue;
+                    if (Phaser.Math.Distance.Between(px, py, it.x, it.y) < 88) {
+                        nearItem = it;
+                        break;
+                    }
+                }
+                this.activeInteractable = nearItem;
+                if (nearItem) {
+                    UI.btnExplore.textContent = nearItem.label;
+                    UI.btnExplore.classList.remove("hidden");
+                } else {
+                    UI.btnExplore.classList.add("hidden");
+                }
+                for (const cp of this.castleCheckpoints) {
+                    if (!cp.solved && Phaser.Math.Distance.Between(px, py, cp.x, cp.y) < 66) {
+                        this.triggerQuiz(cp);
+                        return;
+                    }
+                }
+                return;
+            }
+
+            // === MUNDO EXTERNO: VALE DE HOGWARTS ===
+            // 0. Coletar Vassoura Mágica no Campo de Quadribol!
+            if (!this.hasBroom && Phaser.Math.Distance.Between(px, py, DATA.broomPos.x, DATA.broomPos.y) < 58) {
+                this.hasBroom = true;
+                [this.broomIcon, this.broomGlow, this.broomLabel].forEach((o) => {
+                    o._worldHidden = true;
+                    o.setVisible(false);
+                });
+                if (UI.hudBroom) UI.hudBroom.classList.remove("hidden");
+                if (UI.btnFly) UI.btnFly.classList.remove("hidden");
+                SoundFX.playFanfare();
+                this.burstMagic(DATA.broomPos.x, DATA.broomPos.y, 32);
+                this.addHousePoints(50, DATA.broomPos.x, DATA.broomPos.y);
+                UI.showBanner("🧹 Vassoura encontrada! Aperte F (ou 🧹 Voar) e voe até a 🏰 Torre do Castelo!", 5200);
+            }
+
             // 1. Coletar estrelas
             for (const st of this.collectibleStars) {
                 if (!st.collected && st.sprite.visible && Phaser.Math.Distance.Between(px, py, st.x, st.y) < 46) {
                     st.collected = true;
+                    st.sprite._worldHidden = true;
                     st.sprite.setVisible(false);
                     SoundFX.playCollect();
                     this.burstMagic(st.x, st.y, 12);
@@ -1489,6 +2018,8 @@
             for (const p of this.potions) {
                 if (!p.collected && Phaser.Math.Distance.Between(px, py, p.x, p.y) < 50) {
                     p.collected = true;
+                    p.sprite._worldHidden = true;
+                    p.glow._worldHidden = true;
                     p.sprite.setVisible(false);
                     p.glow.setVisible(false);
                     this.felixTimer = 6.0;
@@ -1499,11 +2030,13 @@
                 }
             }
 
-            // 3. Bilhetes Secretos e Pontos de Exploração próximos
+            // 3. Bilhetes Secretos, Pontos de Exploração e Portal Aéreo da Torre
             let nearItem = null;
             for (const it of this.interactables) {
                 if (it.type === "note" && it.done) continue;
-                if (Phaser.Math.Distance.Between(px, py, it.x, it.y) < 78) {
+                if (it.requiresFlight && !this.isFlying) continue;
+                const radius = it.requiresFlight ? 105 : 78;
+                if (Phaser.Math.Distance.Between(px, py, it.x, it.y) < radius) {
                     nearItem = it;
                     break;
                 }
@@ -1515,6 +2048,8 @@
             } else {
                 UI.btnExplore.classList.add("hidden");
             }
+
+            if (this.isFlying) return; // Quizzes e mini-desafios de chão ativam pousada
 
             // 4. Mini-Desafio Lumos na Floresta Proibida (SE)
             const forestRegion = DATA.quizzes[1];
@@ -1599,6 +2134,13 @@
         UI.btnExplore.addEventListener("click", () => {
             SoundFX.unlock();
             if (window.__heloraScene) window.__heloraScene.interactWithNearby();
+        });
+    }
+
+    if (UI.btnFly) {
+        UI.btnFly.addEventListener("click", () => {
+            SoundFX.unlock();
+            if (window.__heloraScene) window.__heloraScene.toggleFly();
         });
     }
 
