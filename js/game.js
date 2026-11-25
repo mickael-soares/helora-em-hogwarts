@@ -450,10 +450,12 @@
             this.load.spritesheet("kitten_back_walk", ASSETS.kitten_back_walk, { frameWidth: 128, frameHeight: 128 });
             this.load.spritesheet("kitten_front_walk", ASSETS.kitten_front_walk, { frameWidth: 128, frameHeight: 128 });
 
-            // Isac, Convidados Especiais & Props
+            // Isac, Convidados Especiais, VFX & Props
             this.load.image("isac_broom", ASSETS.isac_broom);
             this.load.image("npc_lidiane", ASSETS.npc_lidiane);
             this.load.image("npc_denis", ASSETS.npc_denis);
+            this.load.spritesheet("vfx_fire_4f", ASSETS.vfx_fire_4f, { frameWidth: 128, frameHeight: 128 });
+            this.load.spritesheet("vfx_cauldron_4f", ASSETS.vfx_cauldron_4f, { frameWidth: 128, frameHeight: 128 });
             this.load.image("decor_star", ASSETS.decor_star);
             this.load.image("decor_potion", ASSETS.decor_potion);
             this.load.image("prop_platform", ASSETS.prop_platform);
@@ -728,6 +730,22 @@
                     key: "kitten_front_anim",
                     frames: this.anims.generateFrameNumbers("kitten_front_walk", { start: 0, end: 3 }),
                     frameRate: 9,
+                    repeat: -1
+                });
+            }
+            if (!this.anims.exists("vfx_fire_anim")) {
+                this.anims.create({
+                    key: "vfx_fire_anim",
+                    frames: this.anims.generateFrameNumbers("vfx_fire_4f", { start: 0, end: 3 }),
+                    frameRate: 8.5,
+                    repeat: -1
+                });
+            }
+            if (!this.anims.exists("vfx_cauldron_anim")) {
+                this.anims.create({
+                    key: "vfx_cauldron_anim",
+                    frames: this.anims.generateFrameNumbers("vfx_cauldron_4f", { start: 0, end: 3 }),
+                    frameRate: 6.5,
                     repeat: -1
                 });
             }
@@ -1148,20 +1166,20 @@
                 { x: 1175, y: 1355, s: 0.42 }, { x: 1385, y: 1355, s: 0.42 }
             ];
             flameSpots.forEach((f, idx) => {
-                const glow = this.add.image(f.x, f.y, "soft_glow")
-                    .setTint(0xffb84d)
-                    .setScale(f.s * 1.1)
-                    .setAlpha(0.55)
+                const glow = this.add.image(f.x, f.y - 6, "soft_glow")
+                    .setTint(0xff9c38)
+                    .setScale(f.s * 1.15)
+                    .setAlpha(0.45)
                     .setDepth(11.7);
-                const core = this.add.image(f.x, f.y - 3, "sparkle_dot")
-                    .setTint(0xfff1a8)
-                    .setScale(f.s * 0.85)
-                    .setAlpha(0.92)
+                const core = this.add.sprite(f.x, f.y + 4, "vfx_fire_4f")
+                    .setOrigin(0.5, 1)
+                    .setScale(f.s * 0.52)
                     .setDepth(11.8);
+                core.play({ key: "vfx_fire_anim", startFrame: idx % 4 });
                 this.castleFlames.push({ glow, core, x: f.x, y: f.y, s: f.s, phase: idx * 1.37 });
             });
 
-            // Caldeirões borbulhando nas Masmorras de Poções
+            // Caldeirões borbulhando nas Masmorras de Poções (VFX pintado 4-frames!)
             this.castleCauldrons = [
                 { x: 2052, y: 425, r: 30 },
                 { x: 2248, y: 425, r: 30 },
@@ -1172,8 +1190,13 @@
                 const cglow = this.add.image(c.x, c.y + 4, "soft_glow")
                     .setTint(0x38ff8c)
                     .setScale(c.r > 20 ? 0.95 : 0.55)
-                    .setAlpha(0.62)
+                    .setAlpha(0.55)
                     .setDepth(11.6);
+                const cfx = this.add.sprite(c.x, c.y + 12, "vfx_cauldron_4f")
+                    .setOrigin(0.5, 1)
+                    .setScale(c.r > 20 ? 0.82 : 0.48)
+                    .setDepth(11.9);
+                cfx.play({ key: "vfx_cauldron_anim", startFrame: idx % 4 });
                 c.glow = cglow;
                 c.phase = idx * 2.1;
             });
@@ -1381,16 +1404,27 @@
                 });
             }
 
-            // Chamas vivas (lareiras, velas, braseiros)
+            // Chamas vivas pintadas (lareiras, velas, braseiros)
             (room.flames || []).forEach((f, idx) => {
-                const glow = track(this.add.image(f.x, f.y, "soft_glow").setTint(0xffb84d).setScale(f.s * 1.15).setAlpha(0.58).setDepth(11.7));
-                const core = track(this.add.image(f.x, f.y - 3, "sparkle_dot").setTint(0xfff1a8).setScale(f.s * 0.85).setAlpha(0.92).setDepth(11.8));
-                this.roomFlames.push({ glow, core, x: f.x, y: f.y, s: f.s, phase: idx * 1.41 });
+                const isFireplace = f.s >= 0.9;
+                const glow = track(this.add.image(f.x, f.y - (isFireplace ? 24 : 6), "soft_glow")
+                    .setTint(0xff9830)
+                    .setScale(isFireplace ? f.s * 2.1 : f.s * 1.15)
+                    .setAlpha(0.48)
+                    .setDepth(11.7));
+                const core = track(this.add.sprite(f.x, f.y + (isFireplace ? 48 : 6), "vfx_fire_4f")
+                    .setOrigin(0.5, 1)
+                    .setScale(isFireplace ? f.s * 1.35 : f.s * 0.62)
+                    .setDepth(11.8));
+                core.play({ key: "vfx_fire_anim", startFrame: idx % 4 });
+                this.roomFlames.push({ glow, core, x: f.x, y: f.y, s: f.s, isFireplace, phase: idx * 1.41 });
             });
 
-            // Caldeirão borbulhando (ex.: Cabana do Hagrid)
+            // Caldeirão borbulhando (VFX pintado 4-frames — ex.: Cabana do Hagrid!)
             (room.cauldrons || []).forEach((c, idx) => {
-                const cglow = track(this.add.image(c.x, c.y + 4, "soft_glow").setTint(0x38ff8c).setScale(0.9).setAlpha(0.6).setDepth(11.6));
+                const cglow = track(this.add.image(c.x, c.y + 4, "soft_glow").setTint(0x38ff8c).setScale(0.9).setAlpha(0.52).setDepth(11.6));
+                const cfx = track(this.add.sprite(c.x, c.y + 12, "vfx_cauldron_4f").setOrigin(0.5, 1).setScale(0.82).setDepth(11.9));
+                cfx.play({ key: "vfx_cauldron_anim", startFrame: idx % 4 });
                 this.roomCauldrons.push({ x: c.x, y: c.y, r: c.r, glow: cglow, phase: idx * 1.9 });
             });
         }
@@ -2168,28 +2202,14 @@
             // Chamas vivas e caldeirão borbulhando nas salas/interiores e Estufas!
             if (DATA.rooms[this.activeWorld]) {
                 for (const fl of this.roomFlames) {
-                    const flicker = Math.sin(time * 0.017 + fl.phase) * 0.14 + Math.cos(time * 0.029 + fl.phase * 1.7) * 0.08;
-                    fl.glow.setScale(fl.s * (1.05 + flicker), fl.s * (1.15 + flicker * 1.3));
-                    fl.glow.setAlpha(0.5 + flicker * 0.65);
-                    fl.core.setPosition(fl.x + Math.sin(time * 0.022 + fl.phase) * 1.4, fl.y - 3 - Math.abs(flicker) * 6);
-                    fl.core.setScale(fl.s * (0.78 + flicker * 0.9), fl.s * (1.05 + flicker * 1.6));
+                    const flicker = Math.sin(time * 0.015 + fl.phase) * 0.10 + Math.cos(time * 0.025 + fl.phase * 1.7) * 0.06;
+                    const baseGlow = fl.isFireplace ? fl.s * 2.1 : fl.s * 1.15;
+                    fl.glow.setScale(baseGlow * (1 + flicker), baseGlow * (1.08 + flicker));
+                    fl.glow.setAlpha(0.42 + flicker * 0.55);
                 }
                 if (this.roomCauldrons.length > 0) {
                     for (const c of this.roomCauldrons) {
-                        c.glow.setAlpha(0.55 + Math.sin(time * 0.006 + c.phase) * 0.22);
-                    }
-                    this.cauldronBubbleTimer += dt;
-                    if (this.cauldronBubbleTimer > 0.16) {
-                        this.cauldronBubbleTimer = 0;
-                        for (const c of this.roomCauldrons) {
-                            const bx = c.x + Phaser.Math.Between(-c.r, c.r);
-                            const by = c.y + Phaser.Math.Between(-6, 6);
-                            const bub = this.add.image(bx, by, "sparkle_dot")
-                                .setTint(Math.random() > 0.35 ? 0x6dff9e : 0xffe680)
-                                .setScale(Phaser.Math.FloatBetween(0.24, 0.5))
-                                .setAlpha(0.85).setDepth(11.9);
-                            this.tweens.add({ targets: bub, x: bx + Phaser.Math.Between(-10, 10), y: by - Phaser.Math.Between(28, 54), alpha: 0, duration: 680, onComplete: () => bub.destroy() });
-                        }
+                        c.glow.setAlpha(0.45 + Math.sin(time * 0.006 + c.phase) * 0.18);
                     }
                 }
             }
@@ -2198,40 +2218,15 @@
             if (this.activeWorld === "castle") {
                 if (this.castleFlames) {
                     for (const fl of this.castleFlames) {
-                        const flicker = Math.sin(time * 0.017 + fl.phase) * 0.14 + Math.cos(time * 0.029 + fl.phase * 1.7) * 0.08;
-                        fl.glow.setScale(fl.s * (1.05 + flicker), fl.s * (1.15 + flicker * 1.3));
-                        fl.glow.setAlpha(0.48 + flicker * 0.65);
-                        fl.core.setPosition(fl.x + Math.sin(time * 0.022 + fl.phase) * 1.4, fl.y - 3 - Math.abs(flicker) * 6);
-                        fl.core.setScale(fl.s * (0.78 + flicker * 0.9), fl.s * (1.05 + flicker * 1.6));
+                        const flicker = Math.sin(time * 0.015 + fl.phase) * 0.10 + Math.cos(time * 0.025 + fl.phase * 1.7) * 0.06;
+                        fl.glow.setScale(fl.s * (1.1 + flicker), fl.s * (1.15 + flicker));
+                        fl.glow.setAlpha(0.42 + flicker * 0.55);
                     }
                 }
                 if (this.castleCauldrons) {
                     for (const c of this.castleCauldrons) {
-                        const pulse = 0.55 + Math.sin(time * 0.006 + c.phase) * 0.22;
+                        const pulse = 0.45 + Math.sin(time * 0.006 + c.phase) * 0.18;
                         c.glow.setAlpha(pulse);
-                    }
-                    this.cauldronBubbleTimer += dt;
-                    if (this.cauldronBubbleTimer > 0.14) {
-                        this.cauldronBubbleTimer = 0;
-                        for (const c of this.castleCauldrons) {
-                            const bx = c.x + Phaser.Math.Between(-c.r, c.r);
-                            const by = c.y + Phaser.Math.Between(-6, 6);
-                            const bub = this.add.image(bx, by, "sparkle_dot")
-                                .setTint(Math.random() > 0.3 ? 0x4dff9e : 0xd4ff70)
-                                .setScale(Phaser.Math.FloatBetween(0.24, 0.52))
-                                .setAlpha(0.88)
-                                .setDepth(11.9);
-                            this.tweens.add({
-                                targets: bub,
-                                x: bx + Phaser.Math.Between(-12, 12),
-                                y: by - Phaser.Math.Between(28, 56),
-                                scale: 0.72,
-                                alpha: 0,
-                                duration: Phaser.Math.Between(520, 880),
-                                ease: "Sine.easeOut",
-                                onComplete: () => bub.destroy()
-                            });
-                        }
                     }
                 }
             }
@@ -2906,21 +2901,45 @@
             joyPointerId = e.pointerId;
             InputState.joyActive = true;
             InputState.pointerWalk = false;
-            UI.joystickZone.setPointerCapture(e.pointerId);
+            try { UI.joystickZone.setPointerCapture(e.pointerId); } catch (_) {}
             updateJoystick(e.clientX, e.clientY);
         });
 
-        UI.joystickZone.addEventListener("pointermove", (e) => {
+        window.addEventListener("pointermove", (e) => {
             if (!InputState.joyActive || e.pointerId !== joyPointerId) return;
-            e.preventDefault();
             updateJoystick(e.clientX, e.clientY);
         });
 
-        UI.joystickZone.addEventListener("pointerup", (e) => {
-            if (e.pointerId !== joyPointerId) return;
+        window.addEventListener("pointerup", (e) => {
+            if (!InputState.joyActive || e.pointerId !== joyPointerId) return;
             resetJoystick();
         });
-        UI.joystickZone.addEventListener("pointercancel", resetJoystick);
+        window.addEventListener("pointercancel", (e) => {
+            if (!InputState.joyActive || e.pointerId !== joyPointerId) return;
+            resetJoystick();
+        });
+
+        // Fallback explícito Touch Events para máxima compatibilidade em Safari iOS / Android
+        UI.joystickZone.addEventListener("touchstart", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            SoundFX.unlock();
+            const t = e.changedTouches[0];
+            if (!t) return;
+            InputState.joyActive = true;
+            InputState.pointerWalk = false;
+            updateJoystick(t.clientX, t.clientY);
+        }, { passive: false });
+
+        UI.joystickZone.addEventListener("touchmove", (e) => {
+            if (!InputState.joyActive) return;
+            e.preventDefault();
+            const t = e.changedTouches[0];
+            if (t) updateJoystick(t.clientX, t.clientY);
+        }, { passive: false });
+
+        UI.joystickZone.addEventListener("touchend", resetJoystick, { passive: false });
+        UI.joystickZone.addEventListener("touchcancel", resetJoystick, { passive: false });
     }
 
     const game = new Phaser.Game({
