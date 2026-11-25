@@ -450,7 +450,174 @@ window.HELORA_QUIZ_DATA = {
         ],
         potions: [
             { x: 960, y: 1015 }
+        ],
+        doors: [
+            { x: 345, y: 660, label: "🍬 Entrar na Dedosdemel", targetRoom: "honeydukes" },
+            { x: 815, y: 710, label: "🍺 Entrar no Três Vassouras", targetRoom: "three_broomsticks" },
+            { x: 2010, y: 615, label: "🏡 Entrar na Cabana do Hagrid", targetRoom: "hagrid_hut" },
+            { x: 185, y: 1320, label: "🌿 Ir para Estufas de Herbologia", targetRoom: "greenhouses" }
         ]
+    },
+
+    // 4 Novos Cenários Conectados (3 Interiores + Estufas de Herbologia & Cais do Lago!)
+    rooms: {
+        three_broomsticks: {
+            bgKey: "interior_three_broomsticks",
+            title: "🍺 Taverna Três Vassouras",
+            isOutdoor: false,
+            musicWorld: "castle",
+            startPos: { x: 1280, y: 1180 },
+            exitPortal: { x: 1280, y: 1345, label: "🚪 Sair para Hogsmeade", returnWorld: "hogsmeade", returnPos: { x: 815, y: 765 } },
+            solids: [
+                { x1: 0, y1: 0, x2: 2560, y2: 595 },       // Parede do fundo + janelas + lareira
+                { x1: 0, y1: 500, x2: 830, y2: 1265 },     // Balcão de madeira e banquetas esquerda
+                { x1: 1840, y1: 0, x2: 2560, y2: 650 },    // Escada de madeira à direita
+                { x1: 1525, y1: 600, x2: 1920, y2: 910 },  // Mesa superior direita
+                { x1: 1620, y1: 910, x2: 2070, y2: 1275 }, // Mesa inferior direita
+                { x1: 2080, y1: 635, x2: 2560, y2: 1265 }, // Mesas da parede direita
+                { x1: 0, y1: 1320, x2: 1120, y2: 1440 },   // Parede inferior esquerda da porta
+                { x1: 1440, y1: 1320, x2: 2560, y2: 1440 } // Parede inferior direita da porta
+            ],
+            flames: [
+                { x: 1280, y: 500, s: 1.15 }, // Lareira central acesa!
+                { x: 1715, y: 650, s: 0.42 }, // Vela mesa superior
+                { x: 1860, y: 985, s: 0.42 }, // Vela mesa inferior
+                { x: 2345, y: 650, s: 0.42 }, // Vela mesa direita
+                { x: 2525, y: 980, s: 0.40 }  // Vela canto inferior direito
+            ],
+            stars: [
+                { x: 1180, y: 760 }, { x: 1420, y: 760 }, { x: 1280, y: 980 }, { x: 1020, y: 1140 }
+            ],
+            exploreSpots: [
+                {
+                    x: 920, y: 860, label: "🍺 Balcão da Cerveja Amanteigada",
+                    title: "Três Vassouras • Madame Rosmerta",
+                    text: "Canecas quentinhas de Cerveja Amanteigada espumando no balcão! 'Por conta da casa hoje, feliz aniversário Helora!' 🍺✨"
+                },
+                {
+                    x: 1280, y: 640, label: "🔥 Lareira Aconchegante",
+                    title: "Lareira do Três Vassouras",
+                    text: "O fogo crepita suavemente aquecendo toda a taverna. O gatinho laranjinha se espreguiça pertinho do tapete! 🐱🔥"
+                }
+            ]
+        },
+
+        honeydukes: {
+            bgKey: "interior_honeydukes",
+            title: "🍬 Dedosdemel • Loja de Doces",
+            isOutdoor: false,
+            musicWorld: "castle",
+            startPos: { x: 1280, y: 1180 },
+            exitPortal: { x: 1280, y: 1345, label: "🚪 Sair para Hogsmeade", returnWorld: "hogsmeade", returnPos: { x: 345, y: 720 } },
+            solids: [
+                { x1: 0, y1: 0, x2: 2560, y2: 755 },        // Balcão central de doces e vitrines
+                { x1: 0, y1: 600, x2: 860, y2: 1275 },      // Prateleiras de doces esquerda
+                { x1: 1960, y1: 520, x2: 2560, y2: 1440 },  // Barris e caixotes de doces direita
+                { x1: 1680, y1: 1190, x2: 2560, y2: 1440 }, // Caixotes inferiores direita
+                { x1: 0, y1: 1320, x2: 1110, y2: 1440 },    // Parede inferior esquerda da porta
+                { x1: 1450, y1: 1320, x2: 2560, y2: 1440 }  // Parede inferior direita da porta
+            ],
+            flames: [
+                { x: 675, y: 270, s: 0.50 },
+                { x: 1280, y: 215, s: 0.55 },
+                { x: 1925, y: 215, s: 0.50 }
+            ],
+            stars: [
+                { x: 1050, y: 860 }, { x: 1280, y: 860 }, { x: 1520, y: 860 }, { x: 1740, y: 980 }
+            ],
+            exploreSpots: [
+                {
+                    x: 1280, y: 790, label: "🍫 Vitrine de Tortas e Sapos de Chocolate",
+                    title: "Dedosdemel • Especial de Aniversário",
+                    text: "Você abre um Sapo de Chocolate e vem a figurinha rara mais valiosa de Hogwarts: 'Helora da Sonserina — A Bruxinha Mais Especial!' 🍫🐸✨"
+                },
+                {
+                    x: 1860, y: 820, label: "🍬 Barris de Feijõezinhos",
+                    title: "Feijõezinhos de Todos os Sabores",
+                    text: "Você experimenta um feijãozinho verde-esmeralda: tem gosto de brigadeiro com brilho mágico! 🍬💚"
+                }
+            ]
+        },
+
+        hagrid_hut: {
+            bgKey: "interior_hagrid_hut",
+            title: "🏡 Interior da Cabana do Hagrid",
+            isOutdoor: false,
+            musicWorld: "castle",
+            startPos: { x: 1280, y: 1180 },
+            exitPortal: { x: 1280, y: 1345, label: "🚪 Sair para Hogsmeade", returnWorld: "hogsmeade", returnPos: { x: 2010, y: 685 } },
+            solids: [
+                { x1: 0, y1: 0, x2: 2560, y2: 695 },        // Parede do fundo + lareira + cestinha
+                { x1: 0, y1: 580, x2: 960, y2: 1265 },      // Cama de retalhos e baús à esquerda
+                { x1: 1750, y1: 680, x2: 2560, y2: 1320 },  // Mesa de chá e cadeiras à direita
+                { x1: 0, y1: 1320, x2: 1110, y2: 1440 },    // Parede inferior esquerda da porta
+                { x1: 1450, y1: 1320, x2: 2560, y2: 1440 }  // Parede inferior direita da porta
+            ],
+            flames: [
+                { x: 1280, y: 550, s: 1.05 }, // Fogo sob o caldeirão da lareira
+                { x: 705, y: 245, s: 0.48 },
+                { x: 2065, y: 390, s: 0.48 }
+            ],
+            cauldrons: [
+                { x: 1280, y: 475, r: 34 }    // Caldeirão borbulhando na lareira do Hagrid!
+            ],
+            stars: [
+                { x: 1120, y: 840 }, { x: 1440, y: 840 }, { x: 1280, y: 1020 }, { x: 1580, y: 1120 }
+            ],
+            exploreSpots: [
+                {
+                    x: 1680, y: 920, label: "🍪 Mesa de Chá do Hagrid",
+                    title: "Biscoitos do Hagrid",
+                    text: "Bule fumegante e biscoitos caseiros quentinhos na mesa! Um bilhetinho diz: 'Para a Helora e seu gatinho recuperarem as energias!' ☕🍪"
+                },
+                {
+                    x: 1280, y: 740, label: "🍲 Caldeirão na Lareira",
+                    title: "Cozinha Mágica do Hagrid",
+                    text: "O caldeirão borbulha alegremente sobre o fogo com aroma de canela e abóbora doce! 🎃🔥"
+                }
+            ]
+        },
+
+        greenhouses: {
+            bgKey: "greenhouse_grounds_map",
+            title: "🌿 Estufas de Herbologia & Cais do Lago",
+            isOutdoor: true,
+            musicWorld: "valley",
+            startPos: { x: 340, y: 1280 },
+            exitPortal: { x: 195, y: 1350, label: "🏘️ Voltar para Hogsmeade", returnWorld: "hogsmeade", returnPos: { x: 295, y: 1235 } },
+            solids: [
+                { x1: 0, y1: 0, x2: 2560, y2: 430 },        // Muralhas do Castelo e horizonte norte
+                { x1: 0, y1: 280, x2: 775, y2: 720 },       // Estufas de Herbologia (vidro)
+                { x1: 0, y1: 720, x2: 330, y2: 1180 },      // Estufa inferior esquerda
+                { x1: 1840, y1: 690, x2: 2560, y2: 1440 },  // Águas do Lago Negro (deixa o cais x:1780..2030 acessível na borda!)
+                { x1: 2040, y1: 350, x2: 2560, y2: 690 }    // Muralha do arco do Quadribol
+            ],
+            flames: [
+                { x: 1158, y: 495, s: 0.62 }, // Braseiro superior esquerdo
+                { x: 1482, y: 495, s: 0.62 }, // Braseiro superior direito
+                { x: 1138, y: 650, s: 0.65 }, // Braseiro inferior esquerdo
+                { x: 1502, y: 650, s: 0.65 }, // Braseiro inferior direito
+                { x: 1110, y: 1135, s: 0.50 },
+                { x: 1530, y: 1135, s: 0.50 }
+            ],
+            stars: [
+                { x: 560, y: 1120 }, { x: 860, y: 940 }, { x: 1280, y: 1080 },
+                { x: 1280, y: 820 }, { x: 1320, y: 560 }, { x: 1680, y: 560 },
+                { x: 1960, y: 520 }, { x: 1720, y: 960 }
+            ],
+            exploreSpots: [
+                {
+                    x: 720, y: 740, label: "🌿 Estufa de Herbologia",
+                    title: "Estufas da Professora Sprout",
+                    text: "Através dos vidros iluminados, plantas mágicas bioluminescentes florescem em azul e esmeralda celebrando o dia da Helora! 🌱✨"
+                },
+                {
+                    x: 1810, y: 1020, label: "🌊 Cais do Lago Negro",
+                    title: "Píer Estrelado",
+                    text: "As estrelas do céu refletem na água calma do lago. Um lugar perfeito para fazer um pedido de aniversário! 🌟🌊"
+                }
+            ]
+        }
     },
 
     // Irmão da Helora voando na vassoura (Sonserina)

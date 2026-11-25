@@ -290,6 +290,30 @@
                 this.mapRegions.appendChild(row);
             });
 
+            const sec4 = document.createElement("div");
+            sec4.className = "map-section-title";
+            sec4.textContent = "🚪 Interiores & Estufas de Herbologia";
+            this.mapRegions.appendChild(sec4);
+
+            Object.entries(DATA.rooms).forEach(([rKey, room]) => {
+                const isCurrent = scene.activeWorld === rKey;
+                const row = document.createElement("button");
+                row.type = "button";
+                row.className = "map-row" + (isCurrent ? " current" : "");
+                row.innerHTML = `
+                    <div>
+                        <div class="map-row-name">${isCurrent ? "👣 " : ""}${room.title}</div>
+                        <div class="map-row-meta"><span>${room.isOutdoor ? "🌿 Área Aberta" : "🏠 Interior Explorável"}</span></div>
+                    </div>
+                    <span>${isCurrent ? "Aqui" : "Entrar ➜"}</span>
+                `;
+                row.addEventListener("click", () => {
+                    this.mapOverlay.classList.add("hidden");
+                    scene.switchWorld(rKey, room.startPos, room.title);
+                });
+                this.mapRegions.appendChild(row);
+            });
+
             this.mapOverlay.classList.remove("hidden");
         },
 
@@ -402,6 +426,10 @@
             this.load.image("castle_interior_map", ASSETS.castle_interior_map);
             this.load.image("castle_high_table_overlay", ASSETS.castle_high_table_overlay);
             this.load.image("hogsmeade_map", ASSETS.hogsmeade_map);
+            this.load.image("interior_three_broomsticks", ASSETS.interior_three_broomsticks);
+            this.load.image("interior_honeydukes", ASSETS.interior_honeydukes);
+            this.load.image("interior_hagrid_hut", ASSETS.interior_hagrid_hut);
+            this.load.image("greenhouse_grounds_map", ASSETS.greenhouse_grounds_map);
 
             // Helora nas 4 direções + Corrida dedicada + Voo na Vassoura com o Gatinho!
             this.load.image("helora_idle", ASSETS.helora_idle);
@@ -454,6 +482,12 @@
             this.valleyObjects = [];
             this.castleObjects = [];
             this.hogsmeadeObjects = [];
+            this.roomObjects = [];
+            this.roomStars = [];
+            this.roomInteractables = [];
+            this.roomFlames = [];
+            this.roomCauldrons = [];
+            this.collectedRoomStars = new Set();
             this.lumosActive = false;
             this.lumosSolved = false;
             this.snitchSolved = false;
@@ -1280,6 +1314,85 @@
             this.hogsmeadeInteractables.push({
                 type: "exit_hogsmeade", x: nx, y: ny, label: "⬆ Voltar ao Vale de Hogwarts", done: false
             });
+
+            // Portas para Interiores (Dedosdemel, Três Vassouras, Cabana do Hagrid) e Estufas de Herbologia!
+            if (hw.doors) {
+                hw.doors.forEach((d) => {
+                    const dglow = this.add.image(d.x, d.y, "soft_glow")
+                        .setTint(0xffe484).setScale(0.75, 0.4).setAlpha(0.65).setDepth(4.5);
+                    const dlabel = this.add.text(d.x, d.y - 26, d.label, {
+                        fontFamily: "Cinzel, serif", fontSize: "13px", fontStyle: "bold",
+                        color: "#fff5d6", backgroundColor: "rgba(13, 43, 29, 0.9)", padding: { x: 8, y: 3 }
+                    }).setOrigin(0.5).setDepth(12);
+                    this.tweens.add({ targets: [dglow, dlabel], y: "-=5", duration: 1000, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+                    this.hogsmeadeInteractables.push({
+                        type: "enter_room", targetRoom: d.targetRoom, x: d.x, y: d.y, label: d.label, done: false
+                    });
+                });
+            }
+        }
+
+        clearRoomObjects() {
+            this.roomObjects.forEach((o) => o && o.destroy && o.destroy());
+            this.roomObjects = [];
+            this.roomStars = [];
+            this.roomInteractables = [];
+            this.roomFlames = [];
+            this.roomCauldrons = [];
+        }
+
+        buildRoomContent(roomKey) {
+            this.clearRoomObjects();
+            const room = DATA.rooms[roomKey];
+            if (!room) return;
+            const track = (obj) => { this.roomObjects.push(obj); return obj; };
+
+            // Estrelas da sala
+            (room.stars || []).forEach((pt, i) => {
+                const sid = `${roomKey}_${i}`;
+                if (this.collectedRoomStars.has(sid)) return;
+                const star = track(this.add.image(pt.x, pt.y, "decor_star").setScale(0.58).setDepth(5 + pt.y / 1000));
+                this.tweens.add({ targets: star, y: pt.y - 8, scale: 0.66, duration: 900 + i * 90, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+                this.roomStars.push({ id: sid, sprite: star, x: pt.x, y: pt.y, collected: false });
+            });
+
+            // Pontos de exploração
+            (room.exploreSpots || []).forEach((s) => {
+                const badge = track(this.add.text(s.x, s.y - 26, s.label, {
+                    fontFamily: "Nunito, sans-serif", fontSize: "13px", fontStyle: "bold",
+                    color: "#fff5d6", backgroundColor: "rgba(18, 36, 46, 0.88)", padding: { x: 8, y: 4 }
+                }).setOrigin(0.5).setDepth(11.5));
+                this.tweens.add({ targets: badge, y: s.y - 32, duration: 1100, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+                this.roomInteractables.push({ type: "spot", x: s.x, y: s.y, label: `✨ ${s.label}`, data: s, done: false });
+            });
+
+            // Porta de saída
+            if (room.exitPortal) {
+                const ep = room.exitPortal;
+                const eg = track(this.add.image(ep.x, ep.y, "soft_glow").setTint(0x52f29b).setScale(1.1, 0.48).setAlpha(0.7).setDepth(4.4));
+                const el = track(this.add.text(ep.x, ep.y - 28, ep.label, {
+                    fontFamily: "Cinzel, serif", fontSize: "14px", fontStyle: "bold",
+                    color: "#9effca", backgroundColor: "rgba(13, 43, 29, 0.9)", padding: { x: 10, y: 4 }
+                }).setOrigin(0.5).setDepth(12));
+                this.tweens.add({ targets: [eg, el], y: "-=6", duration: 1000, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+                this.roomInteractables.push({
+                    type: "exit_room", x: ep.x, y: ep.y, label: ep.label,
+                    returnWorld: ep.returnWorld, returnPos: ep.returnPos, done: false
+                });
+            }
+
+            // Chamas vivas (lareiras, velas, braseiros)
+            (room.flames || []).forEach((f, idx) => {
+                const glow = track(this.add.image(f.x, f.y, "soft_glow").setTint(0xffb84d).setScale(f.s * 1.15).setAlpha(0.58).setDepth(11.7));
+                const core = track(this.add.image(f.x, f.y - 3, "sparkle_dot").setTint(0xfff1a8).setScale(f.s * 0.85).setAlpha(0.92).setDepth(11.8));
+                this.roomFlames.push({ glow, core, x: f.x, y: f.y, s: f.s, phase: idx * 1.41 });
+            });
+
+            // Caldeirão borbulhando (ex.: Cabana do Hagrid)
+            (room.cauldrons || []).forEach((c, idx) => {
+                const cglow = track(this.add.image(c.x, c.y + 4, "soft_glow").setTint(0x38ff8c).setScale(0.9).setAlpha(0.6).setDepth(11.6));
+                this.roomCauldrons.push({ x: c.x, y: c.y, r: c.r, glow: cglow, phase: idx * 1.9 });
+            });
         }
 
         setWorldVisibility(world) {
@@ -1295,7 +1408,8 @@
             this.hogsmeadeObjects.forEach((o) => {
                 if (o && o.setVisible) o.setVisible(isHogsmeade && !o._worldHidden);
             });
-            if (this.isacBg) this.isacBg.setVisible((isValley || isHogsmeade) && !this.finaleDone);
+            const isRoomOutdoor = DATA.rooms[world] && DATA.rooms[world].isOutdoor;
+            if (this.isacBg) this.isacBg.setVisible((isValley || isHogsmeade || isRoomOutdoor) && !this.finaleDone);
             if (!isValley) {
                 this.darknessOverlay.setAlpha(0);
                 UI.btnLumos.classList.add("hidden");
@@ -1309,18 +1423,25 @@
             InputState.pointerWalk = false;
             this.isFlying = false;
             this.flyAlt = 0;
+            const roomCfg = DATA.rooms[targetWorld];
+            const canFlyHere = targetWorld === "valley" || targetWorld === "hogsmeade" || (roomCfg && roomCfg.isOutdoor);
             if (UI.btnFly) {
                 UI.btnFly.classList.remove("flying");
                 UI.btnFly.textContent = "🧹 Voar";
-                UI.btnFly.classList.toggle("hidden", !this.hasBroom || targetWorld === "castle");
+                UI.btnFly.classList.toggle("hidden", !this.hasBroom || !canFlyHere);
             }
             this.flyAura.setAlpha(0);
 
             this.cameras.main.fadeOut(280, 7, 10, 20);
             this.cameras.main.once("camerafadeoutcomplete", () => {
                 this.activeWorld = targetWorld;
-                if (window.MagicMusic) window.MagicMusic.setWorld(targetWorld === "castle" ? "castle" : "valley");
-                if (targetWorld === "castle") {
+                const musicZone = roomCfg ? roomCfg.musicWorld : (targetWorld === "castle" ? "castle" : "valley");
+                if (window.MagicMusic) window.MagicMusic.setWorld(musicZone);
+                this.clearRoomObjects();
+                if (roomCfg) {
+                    this.mapBg.setTexture(roomCfg.bgKey).setDisplaySize(WORLD_W, WORLD_H);
+                    this.buildRoomContent(targetWorld);
+                } else if (targetWorld === "castle") {
                     this.castleUnlocked = true;
                     this.mapBg.setTexture(DATA.castleWorld.bgKey).setDisplaySize(WORLD_W, WORLD_H);
                 } else if (targetWorld === "hogsmeade") {
@@ -1341,8 +1462,9 @@
 
         toggleFly() {
             if (!this.hasBroom || this.state !== "WALKING") return;
-            if (this.activeWorld === "castle") {
-                UI.showBanner("🏰 Não é permitido voar dentro do Castelo!", 2200);
+            const roomCfg = DATA.rooms[this.activeWorld];
+            if (this.activeWorld === "castle" || (roomCfg && !roomCfg.isOutdoor)) {
+                UI.showBanner("🏠 Não é permitido voar em ambientes fechados!", 2200);
                 return;
             }
             if (!this.isFlying) {
@@ -1518,6 +1640,19 @@
             if (item.type === "exit_hogsmeade") {
                 this.state = "MODAL";
                 this.switchWorld("valley", { x: 1280, y: 1275 }, "🌍 De volta ao Vale de Hogwarts!");
+                return;
+            }
+            if (item.type === "enter_room") {
+                const rm = DATA.rooms[item.targetRoom];
+                if (rm) {
+                    this.state = "MODAL";
+                    this.switchWorld(item.targetRoom, rm.startPos, rm.title);
+                }
+                return;
+            }
+            if (item.type === "exit_room") {
+                this.state = "MODAL";
+                this.switchWorld(item.returnWorld, item.returnPos, "🏘️ De volta à Vila de Hogsmeade!");
                 return;
             }
 
@@ -1806,6 +1941,10 @@
         }
 
         updateCurrentRegion(force = false) {
+            if (DATA.rooms[this.activeWorld]) {
+                if (force) UI.updateProgress(this.solvedIds.size, DATA.rooms[this.activeWorld].title);
+                return;
+            }
             if (this.activeWorld === "castle") {
                 let bestIdx = 0;
                 let bestDist = Infinity;
@@ -1951,7 +2090,8 @@
 
         isBlockedOnGround(x, y) {
             if (y < 210) return true;
-            const solids = this.activeWorld === "hogsmeade" ? this.getHogsmeadeSolids() : this.getValleySolids();
+            const rm = DATA.rooms[this.activeWorld];
+            const solids = rm ? (rm.solids || []) : (this.activeWorld === "hogsmeade" ? this.getHogsmeadeSolids() : this.getValleySolids());
             for (const r of solids) {
                 if (x > r.x1 && x < r.x2 && y > r.y1 && y < r.y2) return true;
             }
@@ -1969,9 +2109,12 @@
 
             let x = Phaser.Math.Clamp(nx, 70, WORLD_W - 70);
             let y = Phaser.Math.Clamp(ny, 210, WORLD_H - 42);
-            const solids = this.activeWorld === "castle"
-                ? this.getCastleSolids()
-                : (this.activeWorld === "hogsmeade" ? this.getHogsmeadeSolids() : this.getValleySolids());
+            const rm = DATA.rooms[this.activeWorld];
+            const solids = rm
+                ? (rm.solids || [])
+                : (this.activeWorld === "castle"
+                    ? this.getCastleSolids()
+                    : (this.activeWorld === "hogsmeade" ? this.getHogsmeadeSolids() : this.getValleySolids()));
 
             for (let pass = 0; pass < 2; pass++) {
                 for (const r of solids) {
@@ -2019,6 +2162,35 @@
                         ease: "Sine.easeOut",
                         onComplete: () => puff.destroy()
                     });
+                }
+            }
+
+            // Chamas vivas e caldeirão borbulhando nas salas/interiores e Estufas!
+            if (DATA.rooms[this.activeWorld]) {
+                for (const fl of this.roomFlames) {
+                    const flicker = Math.sin(time * 0.017 + fl.phase) * 0.14 + Math.cos(time * 0.029 + fl.phase * 1.7) * 0.08;
+                    fl.glow.setScale(fl.s * (1.05 + flicker), fl.s * (1.15 + flicker * 1.3));
+                    fl.glow.setAlpha(0.5 + flicker * 0.65);
+                    fl.core.setPosition(fl.x + Math.sin(time * 0.022 + fl.phase) * 1.4, fl.y - 3 - Math.abs(flicker) * 6);
+                    fl.core.setScale(fl.s * (0.78 + flicker * 0.9), fl.s * (1.05 + flicker * 1.6));
+                }
+                if (this.roomCauldrons.length > 0) {
+                    for (const c of this.roomCauldrons) {
+                        c.glow.setAlpha(0.55 + Math.sin(time * 0.006 + c.phase) * 0.22);
+                    }
+                    this.cauldronBubbleTimer += dt;
+                    if (this.cauldronBubbleTimer > 0.16) {
+                        this.cauldronBubbleTimer = 0;
+                        for (const c of this.roomCauldrons) {
+                            const bx = c.x + Phaser.Math.Between(-c.r, c.r);
+                            const by = c.y + Phaser.Math.Between(-6, 6);
+                            const bub = this.add.image(bx, by, "sparkle_dot")
+                                .setTint(Math.random() > 0.35 ? 0x6dff9e : 0xffe680)
+                                .setScale(Phaser.Math.FloatBetween(0.24, 0.5))
+                                .setAlpha(0.85).setDepth(11.9);
+                            this.tweens.add({ targets: bub, x: bx + Phaser.Math.Between(-10, 10), y: by - Phaser.Math.Between(28, 54), alpha: 0, duration: 680, onComplete: () => bub.destroy() });
+                        }
+                    }
                 }
             }
 
@@ -2410,6 +2582,34 @@
                         this.triggerQuiz(cp);
                         return;
                     }
+                }
+                return;
+            }
+
+            if (DATA.rooms[this.activeWorld]) {
+                for (const st of this.roomStars) {
+                    if (!st.collected && Phaser.Math.Distance.Between(px, py, st.x, st.y) < 48) {
+                        st.collected = true;
+                        this.collectedRoomStars.add(st.id);
+                        st.sprite.setVisible(false);
+                        SoundFX.playCollect();
+                        this.burstMagic(st.x, st.y, 12);
+                        this.addHousePoints(15, st.x, st.y);
+                    }
+                }
+                let nearItem = null;
+                for (const it of this.roomInteractables) {
+                    if (Phaser.Math.Distance.Between(px, py, it.x, it.y) < 95) {
+                        nearItem = it;
+                        break;
+                    }
+                }
+                this.activeInteractable = nearItem;
+                if (nearItem) {
+                    UI.btnExplore.textContent = nearItem.label;
+                    UI.btnExplore.classList.remove("hidden");
+                } else {
+                    UI.btnExplore.classList.add("hidden");
                 }
                 return;
             }
