@@ -8,6 +8,7 @@ window.HELORA_QUIZ_DATA = {
     finalePos: { x: 1280, y: 425 },
     broomPos: { x: 2285, y: 425 },
     towerPortalPos: { x: 1280, y: 210 },
+    southPortalPos: { x: 1280, y: 1380 },
 
     // 5 Regiões no mesmo mapa contínuo — 100% abertas desde o início!
     quizzes: [
@@ -276,7 +277,7 @@ window.HELORA_QUIZ_DATA = {
                     propKey: "decor_potion",
                     location: "Masmorras de Poções",
                     x: 2145,
-                    y: 440,
+                    y: 535,
                     question: "Qual poção dourada concede sorte extraordinária a quem a bebe?",
                     options: [
                         "Poção Polissuco",
@@ -288,8 +289,8 @@ window.HELORA_QUIZ_DATA = {
                     successMsg: "Perfeito! Felix Felicis — sorte pura no seu novo ano! +75 pts! 🧪✨"
                 },
                 exploreSpot: {
-                    x: 2240,
-                    y: 855,
+                    x: 2145,
+                    y: 865,
                     label: "🧪 Caldeirão Borbulhante",
                     title: "Aula de Poções da Sonserina",
                     text: "Um caldeirão borbulha em verde-esmeralda liberando cheiro de bolo de aniversário recém-assado! 🎂💚"
@@ -319,7 +320,7 @@ window.HELORA_QUIZ_DATA = {
                 secretNote: {
                     id: 7,
                     x: 1280,
-                    y: 235,
+                    y: 290,
                     title: "💌 Carta Real — Salão Principal",
                     text: "Você voou até a Torre e explorou o coração de Hogwarts! Feliz Aniversário, bruxinha incrível — o mundo mágico inteiro comemora com você! 🏰🎂✨"
                 }
@@ -333,6 +334,122 @@ window.HELORA_QUIZ_DATA = {
         ],
         potions: [
             { x: 2080, y: 950 }
+        ],
+        // Convidados especiais sentados nas cadeiras verdes da mesa principal do Salão Principal!
+        seatedGuests: [
+            {
+                id: "lidiane",
+                spriteKey: "npc_lidiane",
+                name: "Sra. Lidiane",
+                x: 1226,
+                y: 152,
+                interactX: 1215,
+                interactY: 278,
+                label: "💬 Falar com Sra. Lidiane",
+                title: "💚 Sra. Lidiane • Salão Principal",
+                text: "Um brinde à nossa estrela da Sonserina! Feliz Aniversário, Helora! Que sua vida seja sempre repleta de amor, saúde e muita magia! 🥂✨💚"
+            },
+            {
+                id: "denis",
+                spriteKey: "npc_denis",
+                name: "Denis",
+                x: 1334,
+                y: 152,
+                interactX: 1345,
+                interactY: 278,
+                label: "💬 Falar com Denis",
+                title: "💚 Denis • Salão Principal",
+                text: "Feliz Aniversário, Helora! Que honra comemorar esse dia especial aqui no Salão Principal de Hogwarts! Aproveite cada segundo dessa aventura! 🎉💚✨"
+            }
+        ]
+    },
+
+    // 3º Mundo Aberto: Setor Sul — Vila de Hogsmeade, Cabana do Hagrid & Estação do Expresso!
+    hogsmeadeWorld: {
+        bgKey: "hogsmeade_map",
+        startPos: { x: 1280, y: 345 },
+        northPortalPos: { x: 1280, y: 255 },
+        zones: [
+            {
+                id: "hogsmeade_village",
+                location: "Vila de Hogsmeade • Dedosdemel",
+                regionCenter: { x: 560, y: 820 },
+                travelPos: { x: 640, y: 850 },
+                quiz: {
+                    id: 9,
+                    propKey: "prop_platform",
+                    location: "Vila de Hogsmeade",
+                    x: 520,
+                    y: 790,
+                    question: "Qual famosa bebida quentinha os bruxos adoram pedir no Três Vassouras em Hogsmeade?",
+                    options: [
+                        "Cerveja Amanteigada",
+                        "Suco de Uva Mágica",
+                        "Chá de Mandrágora"
+                    ],
+                    correctIndex: 0,
+                    wrongHint: "É docinha, cremosa e tem 'manteiga' no nome!",
+                    successMsg: "Isso mesmo! Uma Cerveja Amanteigada para comemorar! +75 pts! 🍺✨"
+                },
+                exploreSpot: {
+                    x: 420,
+                    y: 660,
+                    label: "🍬 Vitrine da Dedosdemel",
+                    title: "Dedosdemel • Loja de Doces",
+                    text: "Sapos de Chocolate, Feijõezinhos de Todos os Sabores e uma caixa dourada especial reservada para o aniversário da Helora! 🍬🍫✨"
+                }
+            },
+            {
+                id: "hagrid_hut",
+                location: "Cabana do Hagrid",
+                regionCenter: { x: 2020, y: 690 },
+                travelPos: { x: 1860, y: 830 },
+                quiz: {
+                    id: 10,
+                    propKey: "prop_owl",
+                    location: "Cabana do Hagrid",
+                    x: 1965,
+                    y: 685,
+                    question: "Qual criatura mágica gigante o Hagrid adotou e cuidou com todo carinho na Floresta?",
+                    options: [
+                        "Bicuço (Hipogrifo)",
+                        "Basilisco",
+                        "Dementador"
+                    ],
+                    correctIndex: 0,
+                    wrongHint: "Você precisa fazer uma reverência educada antes de montar nele!",
+                    successMsg: "Acertou! Bicuço faz uma reverência para a Helora! +75 pts! 🦅✨"
+                },
+                secretNote: {
+                    id: 8,
+                    x: 1810,
+                    y: 620,
+                    title: "💌 Bilhete do Hagrid — Horta de Abóboras",
+                    text: "Você é uma bruxinha de ouro, Helora! Deixei um pedaço enorme de bolo esperando por você no Castelo! — Com carinho, Hagrid 🎃🎂"
+                }
+            },
+            {
+                id: "hogsmeade_station",
+                location: "Estação do Expresso de Hogwarts",
+                regionCenter: { x: 1740, y: 1120 },
+                travelPos: { x: 1560, y: 1040 },
+                exploreSpot: {
+                    x: 1720,
+                    y: 1065,
+                    label: "🚂 Expresso de Hogwarts",
+                    title: "Plataforma de Hogsmeade",
+                    text: "A locomotiva vermelha solta fumaça branca perfumada sob as estrelas. Próxima parada: um novo ano cheio de conquistas para a Helora! 🚂✨"
+                }
+            }
+        ],
+        stars: [
+            { x: 1280, y: 470 }, { x: 1280, y: 670 }, { x: 1280, y: 880 },
+            { x: 1020, y: 880 }, { x: 780, y: 880 }, { x: 460, y: 1080 },
+            { x: 260, y: 1260 }, { x: 1540, y: 920 }, { x: 1820, y: 950 },
+            { x: 2120, y: 960 }, { x: 1950, y: 780 }, { x: 640, y: 720 }
+        ],
+        potions: [
+            { x: 960, y: 1015 }
         ]
     },
 

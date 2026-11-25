@@ -265,6 +265,31 @@
                 });
             }
 
+            const sec3 = document.createElement("div");
+            sec3.className = "map-section-title";
+            sec3.textContent = "🏘️ Setor Sul • Hogsmeade & Cabana do Hagrid";
+            this.mapRegions.appendChild(sec3);
+
+            DATA.hogsmeadeWorld.zones.forEach((zone, idx) => {
+                const isCurrent = scene.activeWorld === "hogsmeade" && idx === scene.currentHogsmeadeIdx;
+                const row = document.createElement("button");
+                row.type = "button";
+                row.className = "map-row" + (isCurrent ? " current" : "");
+                const qTag = zone.quiz ? (scene.bonusSolvedIds.has(zone.quiz.id) ? "✓ Quiz Bônus" : "✦ Quiz Bônus") : "🚂 Estação";
+                row.innerHTML = `
+                    <div>
+                        <div class="map-row-name">${isCurrent ? "👣 " : ""}${zone.location}</div>
+                        <div class="map-row-meta"><span>${qTag}</span></div>
+                    </div>
+                    <span>${isCurrent ? "Aqui" : "Viajar ➜"}</span>
+                `;
+                row.addEventListener("click", () => {
+                    this.mapOverlay.classList.add("hidden");
+                    scene.fastTravelTo(zone, "hogsmeade");
+                });
+                this.mapRegions.appendChild(row);
+            });
+
             this.mapOverlay.classList.remove("hidden");
         },
 
@@ -375,16 +400,21 @@
             this.load.image("overworld_map", ASSETS.overworld_map);
             this.load.image("overworld_bridge_overlay", ASSETS.overworld_bridge_overlay);
             this.load.image("castle_interior_map", ASSETS.castle_interior_map);
+            this.load.image("castle_high_table_overlay", ASSETS.castle_high_table_overlay);
+            this.load.image("hogsmeade_map", ASSETS.hogsmeade_map);
 
             // Helora nas 4 direções + Corrida dedicada + Voo na Vassoura com o Gatinho!
             this.load.image("helora_idle", ASSETS.helora_idle);
             this.load.image("helora_celebrate", ASSETS.helora_celebrate);
             this.load.image("helora_broom", ASSETS.helora_broom);
+            this.load.image("helora_broom_back", ASSETS.helora_broom_back);
+            this.load.image("helora_broom_front", ASSETS.helora_broom_front);
             this.load.spritesheet("helora_walk", ASSETS.helora_walk, { frameWidth: 256, frameHeight: 256 });
             this.load.spritesheet("helora_back_walk", ASSETS.helora_back_walk, { frameWidth: 256, frameHeight: 256 });
             this.load.spritesheet("helora_front_walk", ASSETS.helora_front_walk, { frameWidth: 256, frameHeight: 256 });
             this.load.spritesheet("helora_run_side", ASSETS.helora_run_side, { frameWidth: 256, frameHeight: 256 });
             this.load.spritesheet("helora_run_front", ASSETS.helora_run_front, { frameWidth: 256, frameHeight: 256 });
+            this.load.spritesheet("helora_run_back", ASSETS.helora_run_back, { frameWidth: 256, frameHeight: 256 });
 
             // Gatinho nas 4 direções (todos com 4 frames fluidos!)
             this.load.image("kitten_idle", ASSETS.kitten_idle);
@@ -392,8 +422,10 @@
             this.load.spritesheet("kitten_back_walk", ASSETS.kitten_back_walk, { frameWidth: 128, frameHeight: 128 });
             this.load.spritesheet("kitten_front_walk", ASSETS.kitten_front_walk, { frameWidth: 128, frameHeight: 128 });
 
-            // Isac & Props
+            // Isac, Convidados Especiais & Props
             this.load.image("isac_broom", ASSETS.isac_broom);
+            this.load.image("npc_lidiane", ASSETS.npc_lidiane);
+            this.load.image("npc_denis", ASSETS.npc_denis);
             this.load.image("decor_star", ASSETS.decor_star);
             this.load.image("decor_potion", ASSETS.decor_potion);
             this.load.image("prop_platform", ASSETS.prop_platform);
@@ -406,9 +438,10 @@
 
         create() {
             this.state = "INTRO"; // INTRO | WALKING | QUIZ | SNITCH_HUNT | MODAL | CELEBRATE | FINALE
-            this.activeWorld = "valley"; // "valley" | "castle"
+            this.activeWorld = "valley"; // "valley" | "castle" | "hogsmeade"
             this.currentRegionIdx = 0;
             this.currentCastleWingIdx = 0;
+            this.currentHogsmeadeIdx = 0;
             this.solvedIds = new Set();
             this.bonusSolvedIds = new Set();
             this.foundNotes = new Set();
@@ -420,6 +453,7 @@
             this.castleUnlocked = false;
             this.valleyObjects = [];
             this.castleObjects = [];
+            this.hogsmeadeObjects = [];
             this.lumosActive = false;
             this.lumosSolved = false;
             this.snitchSolved = false;
@@ -476,6 +510,10 @@
             const cStart = this.children.list.length;
             this.buildCastleWorldContent();
             this.castleObjects = this.children.list.slice(cStart);
+
+            const hStart = this.children.list.length;
+            this.buildHogsmeadeWorldContent();
+            this.hogsmeadeObjects = this.children.list.slice(hStart);
 
             this.setWorldVisibility("valley");
 
@@ -606,7 +644,7 @@
             if (!this.anims.exists("helora_front_anim")) {
                 this.anims.create({
                     key: "helora_front_anim",
-                    frames: this.anims.generateFrameNumbers("helora_front_walk", { start: 0, end: 1 }),
+                    frames: this.anims.generateFrameNumbers("helora_front_walk", { start: 0, end: 3 }),
                     frameRate: 6.5,
                     repeat: -1
                 });
@@ -623,6 +661,14 @@
                 this.anims.create({
                     key: "helora_run_front_anim",
                     frames: this.anims.generateFrameNumbers("helora_run_front", { start: 0, end: 3 }),
+                    frameRate: 10,
+                    repeat: -1
+                });
+            }
+            if (!this.anims.exists("helora_run_back_anim")) {
+                this.anims.create({
+                    key: "helora_run_back_anim",
+                    frames: this.anims.generateFrameNumbers("helora_run_back", { start: 0, end: 3 }),
                     frameRate: 10,
                     repeat: -1
                 });
@@ -919,6 +965,25 @@
                 label: "🏰 Entrar na Torre do Castelo",
                 done: false
             });
+
+            // 8. Saída Sul da Avenida Central -> Vila de Hogsmeade & Expresso!
+            const spx = DATA.southPortalPos.x;
+            const spy = DATA.southPortalPos.y;
+            const spGlow = this.add.image(spx, spy, "soft_glow")
+                .setTint(0xffe484).setScale(1.15, 0.5).setAlpha(0.65).setDepth(4.3);
+            const spLabel = this.add.text(spx, spy - 26, "⬇ Vila de Hogsmeade & Expresso", {
+                fontFamily: "Cinzel, serif", fontSize: "14px", fontStyle: "bold",
+                color: "#fff3c4", backgroundColor: "rgba(13, 43, 29, 0.9)", padding: { x: 10, y: 4 }
+            }).setOrigin(0.5).setDepth(12);
+            this.tweens.add({ targets: [spGlow, spLabel], y: "+=6", duration: 1000, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+            this.interactables.push({
+                type: "enter_hogsmeade",
+                world: "valley",
+                x: spx,
+                y: spy,
+                label: "⬇ Ir para Vila de Hogsmeade",
+                done: false
+            });
         }
 
         buildCastleWorldContent() {
@@ -1027,17 +1092,210 @@
                 label: "🌍 Voltar ao Vale de Hogwarts",
                 done: false
             });
+
+            // Efeitos de fogo animado nas velas e arandelas do Castelo
+            this.castleFlames = [];
+            const flameSpots = [
+                // Mesas de banquete + mesa principal do Salão Principal
+                { x: 1068, y: 292, s: 0.44 }, { x: 1044, y: 405, s: 0.46 },
+                { x: 1492, y: 292, s: 0.44 }, { x: 1516, y: 405, s: 0.46 },
+                { x: 1188, y: 152, s: 0.40 }, { x: 1372, y: 152, s: 0.40 },
+                // Arandelas laterais do Salão Principal e Corredores
+                { x: 966, y: 220, s: 0.38 }, { x: 924, y: 392, s: 0.38 },
+                { x: 1594, y: 220, s: 0.38 }, { x: 1636, y: 392, s: 0.38 },
+                { x: 1200, y: 615, s: 0.45 }, { x: 1360, y: 615, s: 0.45 },
+                { x: 1200, y: 765, s: 0.45 }, { x: 1360, y: 765, s: 0.45 },
+                // Lanternas da Biblioteca e Corredores
+                { x: 775, y: 775, s: 0.44 }, { x: 1785, y: 775, s: 0.44 },
+                { x: 338, y: 315, s: 0.40 }, { x: 520, y: 375, s: 0.40 },
+                { x: 248, y: 600, s: 0.40 }, { x: 505, y: 820, s: 0.40 },
+                // Torre de Astronomia
+                { x: 1185, y: 995, s: 0.40 }, { x: 1375, y: 995, s: 0.40 },
+                { x: 1175, y: 1355, s: 0.42 }, { x: 1385, y: 1355, s: 0.42 }
+            ];
+            flameSpots.forEach((f, idx) => {
+                const glow = this.add.image(f.x, f.y, "soft_glow")
+                    .setTint(0xffb84d)
+                    .setScale(f.s * 1.1)
+                    .setAlpha(0.55)
+                    .setDepth(11.7);
+                const core = this.add.image(f.x, f.y - 3, "sparkle_dot")
+                    .setTint(0xfff1a8)
+                    .setScale(f.s * 0.85)
+                    .setAlpha(0.92)
+                    .setDepth(11.8);
+                this.castleFlames.push({ glow, core, x: f.x, y: f.y, s: f.s, phase: idx * 1.37 });
+            });
+
+            // Caldeirões borbulhando nas Masmorras de Poções
+            this.castleCauldrons = [
+                { x: 2052, y: 425, r: 30 },
+                { x: 2248, y: 425, r: 30 },
+                { x: 2048, y: 855, r: 18 }
+            ];
+            this.cauldronBubbleTimer = 0;
+            this.castleCauldrons.forEach((c, idx) => {
+                const cglow = this.add.image(c.x, c.y + 4, "soft_glow")
+                    .setTint(0x38ff8c)
+                    .setScale(c.r > 20 ? 0.95 : 0.55)
+                    .setAlpha(0.62)
+                    .setDepth(11.6);
+                c.glow = cglow;
+                c.phase = idx * 2.1;
+            });
+
+            // Convidados especiais sentados nas cadeiras verdes da mesa principal do Salão Principal (com a mesa por CIMA!)
+            if (cw.seatedGuests) {
+                cw.seatedGuests.forEach((g, idx) => {
+                    const npc = this.add.image(g.x, g.y, g.spriteKey)
+                        .setOrigin(0.5, 1)
+                        .setScale(0.36)
+                        .setDepth(4.85);
+                    this.tweens.add({
+                        targets: npc,
+                        scaleY: 0.372,
+                        y: g.y - 1.5,
+                        duration: 1200 + idx * 220,
+                        yoyo: true,
+                        repeat: -1,
+                        ease: "Sine.easeInOut"
+                    });
+                    const tag = this.add.text(g.x, g.y - 74, `💚 ${g.name}`, {
+                        fontFamily: "Cinzel, serif",
+                        fontSize: "12px",
+                        fontStyle: "bold",
+                        color: "#fff5d6",
+                        backgroundColor: "rgba(13, 43, 29, 0.88)",
+                        padding: { x: 7, y: 3 }
+                    }).setOrigin(0.5).setDepth(12);
+                    this.tweens.add({
+                        targets: tag,
+                        y: g.y - 77,
+                        duration: 1200 + idx * 220,
+                        yoyo: true,
+                        repeat: -1,
+                        ease: "Sine.easeInOut"
+                    });
+                    this.castleInteractables.push({
+                        type: "spot",
+                        x: g.interactX,
+                        y: g.interactY,
+                        sprite: npc,
+                        label: g.label,
+                        data: { title: g.title, text: g.text },
+                        done: false
+                    });
+                });
+
+                // Mesa principal de madeira renderizada POR CIMA da cintura/pernas dos convidados!
+                this.add.image(1152, 140, "castle_high_table_overlay")
+                    .setOrigin(0, 0)
+                    .setDisplaySize(256, 64)
+                    .setDepth(5.0);
+            }
+        }
+
+        buildHogsmeadeWorldContent() {
+            const hw = DATA.hogsmeadeWorld;
+            this.hogsmeadeStars = [];
+            this.hogsmeadePotions = [];
+            this.hogsmeadeCheckpoints = [];
+            this.hogsmeadeInteractables = [];
+            this.trainSteamTimer = 0;
+
+            // Estrelas em Hogsmeade
+            hw.stars.forEach((pt, i) => {
+                const star = this.add.image(pt.x, pt.y, "decor_star")
+                    .setScale(0.58)
+                    .setDepth(5 + pt.y / 1000);
+                this.tweens.add({
+                    targets: star, y: pt.y - 8, scale: 0.66,
+                    duration: 900 + (i % 5) * 110, yoyo: true, repeat: -1, ease: "Sine.easeInOut"
+                });
+                this.hogsmeadeStars.push({ sprite: star, x: pt.x, y: pt.y, collected: false });
+            });
+
+            // Poção extra
+            hw.potions.forEach((p) => {
+                const glow = this.add.image(p.x, p.y, "soft_glow")
+                    .setTint(0xffe066).setScale(0.55).setAlpha(0.58).setDepth(4.8 + p.y / 1000);
+                const vial = this.add.image(p.x, p.y, "decor_potion")
+                    .setScale(0.58).setDepth(5 + p.y / 1000);
+                this.tweens.add({ targets: [vial, glow], y: p.y - 9, duration: 950, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+                this.hogsmeadePotions.push({ sprite: vial, glow, x: p.x, y: p.y, collected: false });
+            });
+
+            // 3 Zonas de Hogsmeade
+            hw.zones.forEach((zone) => {
+                if (zone.quiz) {
+                    const q = zone.quiz;
+                    const glow = this.add.image(q.x, q.y, "soft_glow")
+                        .setTint(0xffe066).setScale(0.85, 0.45).setAlpha(0.58).setDepth(4.5 + q.y / 1000);
+                    const prop = this.add.image(q.x, q.y - 8, q.propKey)
+                        .setOrigin(0.5, 0.85).setScale(0.42).setDepth(5 + q.y / 1000);
+                    const marker = this.add.text(q.x, q.y - 68, `★ Quiz Bônus • ${q.location}`, {
+                        fontFamily: "Cinzel, serif", fontSize: "15px", fontStyle: "bold",
+                        color: "#ffe680", backgroundColor: "rgba(13, 43, 29, 0.9)", padding: { x: 9, y: 4 }
+                    }).setOrigin(0.5).setDepth(12);
+                    this.tweens.add({ targets: [prop, marker], y: "-=7", duration: 1050, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+                    this.hogsmeadeCheckpoints.push({ quiz: q, isBonus: true, x: q.x, y: q.y, prop, glow, marker, solved: false });
+                }
+
+                if (zone.secretNote) {
+                    const n = zone.secretNote;
+                    const nglow = this.add.image(n.x, n.y, "soft_glow")
+                        .setTint(0xffe680).setScale(0.55).setAlpha(0.65).setDepth(4.6 + n.y / 1000);
+                    const nicon = this.add.text(n.x, n.y, "💌", { fontSize: "26px" })
+                        .setOrigin(0.5).setDepth(5.2 + n.y / 1000);
+                    this.tweens.add({ targets: [nicon, nglow], y: "-=9", duration: 920, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+                    this.hogsmeadeInteractables.push({
+                        type: "castle_note", noteId: n.id, x: n.x, y: n.y,
+                        sprite: nicon, glow: nglow, label: "💌 Ler Bilhete Secreto", data: n, done: false
+                    });
+                }
+
+                if (zone.exploreSpot) {
+                    const s = zone.exploreSpot;
+                    const badge = this.add.text(s.x, s.y - 26, s.label, {
+                        fontFamily: "Nunito, sans-serif", fontSize: "13px", fontStyle: "bold",
+                        color: "#fff5d6", backgroundColor: "rgba(18, 36, 46, 0.86)", padding: { x: 8, y: 4 }
+                    }).setOrigin(0.5).setDepth(11.5);
+                    this.tweens.add({ targets: badge, y: s.y - 32, duration: 1100, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+                    this.hogsmeadeInteractables.push({
+                        type: "spot", x: s.x, y: s.y, sprite: badge, label: `✨ ${s.label}`, data: s, done: false
+                    });
+                }
+            });
+
+            // Portal Norte de Volta ao Vale de Hogwarts!
+            const nx = hw.northPortalPos.x;
+            const ny = hw.northPortalPos.y;
+            const nglow = this.add.image(nx, ny, "soft_glow")
+                .setTint(0x52f29b).setScale(1.2, 0.5).setAlpha(0.7).setDepth(4.4);
+            const nlabel = this.add.text(nx, ny - 26, "⬆ Voltar ao Vale de Hogwarts", {
+                fontFamily: "Cinzel, serif", fontSize: "14px", fontStyle: "bold",
+                color: "#9effca", backgroundColor: "rgba(13, 43, 29, 0.9)", padding: { x: 10, y: 4 }
+            }).setOrigin(0.5).setDepth(12);
+            this.tweens.add({ targets: [nglow, nlabel], y: "-=6", duration: 1000, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+            this.hogsmeadeInteractables.push({
+                type: "exit_hogsmeade", x: nx, y: ny, label: "⬆ Voltar ao Vale de Hogwarts", done: false
+            });
         }
 
         setWorldVisibility(world) {
             const isValley = world === "valley";
+            const isCastle = world === "castle";
+            const isHogsmeade = world === "hogsmeade";
             this.valleyObjects.forEach((o) => {
                 if (o && o.setVisible) o.setVisible(isValley && !o._worldHidden);
             });
             this.castleObjects.forEach((o) => {
-                if (o && o.setVisible) o.setVisible(!isValley && !o._worldHidden);
+                if (o && o.setVisible) o.setVisible(isCastle && !o._worldHidden);
             });
-            if (this.isacBg) this.isacBg.setVisible(isValley && !this.finaleDone);
+            this.hogsmeadeObjects.forEach((o) => {
+                if (o && o.setVisible) o.setVisible(isHogsmeade && !o._worldHidden);
+            });
+            if (this.isacBg) this.isacBg.setVisible((isValley || isHogsmeade) && !this.finaleDone);
             if (!isValley) {
                 this.darknessOverlay.setAlpha(0);
                 UI.btnLumos.classList.add("hidden");
@@ -1054,17 +1312,19 @@
             if (UI.btnFly) {
                 UI.btnFly.classList.remove("flying");
                 UI.btnFly.textContent = "🧹 Voar";
-                UI.btnFly.classList.toggle("hidden", !this.hasBroom || targetWorld !== "valley");
+                UI.btnFly.classList.toggle("hidden", !this.hasBroom || targetWorld === "castle");
             }
             this.flyAura.setAlpha(0);
 
             this.cameras.main.fadeOut(280, 7, 10, 20);
             this.cameras.main.once("camerafadeoutcomplete", () => {
                 this.activeWorld = targetWorld;
-                if (window.MagicMusic) window.MagicMusic.setWorld(targetWorld);
+                if (window.MagicMusic) window.MagicMusic.setWorld(targetWorld === "castle" ? "castle" : "valley");
                 if (targetWorld === "castle") {
                     this.castleUnlocked = true;
                     this.mapBg.setTexture(DATA.castleWorld.bgKey).setDisplaySize(WORLD_W, WORLD_H);
+                } else if (targetWorld === "hogsmeade") {
+                    this.mapBg.setTexture(DATA.hogsmeadeWorld.bgKey).setDisplaySize(WORLD_W, WORLD_H);
                 } else {
                     this.mapBg.setTexture("overworld_map").setDisplaySize(WORLD_W, WORLD_H);
                 }
@@ -1081,7 +1341,7 @@
 
         toggleFly() {
             if (!this.hasBroom || this.state !== "WALKING") return;
-            if (this.activeWorld !== "valley") {
+            if (this.activeWorld === "castle") {
                 UI.showBanner("🏰 Não é permitido voar dentro do Castelo!", 2200);
                 return;
             }
@@ -1248,6 +1508,16 @@
             if (item.type === "exit_castle") {
                 this.state = "MODAL";
                 this.switchWorld("valley", { x: 1280, y: 690 }, "🌍 De volta ao Vale de Hogwarts!");
+                return;
+            }
+            if (item.type === "enter_hogsmeade") {
+                this.state = "MODAL";
+                this.switchWorld("hogsmeade", DATA.hogsmeadeWorld.startPos, "🏘️ Bem-vinda à Vila de Hogsmeade & Expresso!");
+                return;
+            }
+            if (item.type === "exit_hogsmeade") {
+                this.state = "MODAL";
+                this.switchWorld("valley", { x: 1280, y: 1275 }, "🌍 De volta ao Vale de Hogwarts!");
                 return;
             }
 
@@ -1553,6 +1823,23 @@
                 return;
             }
 
+            if (this.activeWorld === "hogsmeade") {
+                let bestIdx = 0;
+                let bestDist = Infinity;
+                DATA.hogsmeadeWorld.zones.forEach((z, idx) => {
+                    const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, z.regionCenter.x, z.regionCenter.y);
+                    if (d < bestDist) {
+                        bestDist = d;
+                        bestIdx = idx;
+                    }
+                });
+                if (force || bestIdx !== this.currentHogsmeadeIdx) {
+                    this.currentHogsmeadeIdx = bestIdx;
+                    UI.updateProgress(this.solvedIds.size, `🏘️ ${DATA.hogsmeadeWorld.zones[bestIdx].location}`);
+                }
+                return;
+            }
+
             let bestIdx = 0;
             let bestDist = Infinity;
             DATA.quizzes.forEach((r, idx) => {
@@ -1593,9 +1880,79 @@
             ];
         }
 
+        getCastleSolids() {
+            return [
+                // Paredes externas & vazios fora do castelo
+                { x1: 0, y1: 0, x2: 165, y2: 1440 },
+                { x1: 2405, y1: 0, x2: 2560, y2: 1440 },
+                { x1: 0, y1: 0, x2: 720, y2: 245 },
+                { x1: 880, y1: 0, x2: 1680, y2: 215 },
+                { x1: 1840, y1: 0, x2: 2560, y2: 250 },
+                { x1: 700, y1: 0, x2: 880, y2: 330 },
+                { x1: 1680, y1: 0, x2: 1860, y2: 330 },
+                { x1: 790, y1: 790, x2: 960, y2: 1440 },
+                { x1: 1600, y1: 790, x2: 1770, y2: 1440 },
+                { x1: 0, y1: 1125, x2: 810, y2: 1440 },
+                { x1: 1750, y1: 1125, x2: 2560, y2: 1440 },
+                // Parede sul da Torre de Astronomia (porta dourada x:1190..1370 ABERTA!)
+                { x1: 940, y1: 1275, x2: 1190, y2: 1440 },
+                { x1: 1370, y1: 1275, x2: 1620, y2: 1440 },
+                // Parede norte da Torre de Astronomia (arco central x:1205..1355 ABERTO!)
+                { x1: 930, y1: 815, x2: 1205, y2: 1015 },
+                { x1: 1355, y1: 815, x2: 1630, y2: 1015 },
+                // Paredes do Salão Principal (porta central x:1155..1405 ABERTA!)
+                { x1: 835, y1: 180, x2: 930, y2: 675 },
+                { x1: 1630, y1: 180, x2: 1725, y2: 675 },
+                { x1: 835, y1: 525, x2: 1155, y2: 675 },
+                { x1: 1405, y1: 525, x2: 1725, y2: 675 },
+                // Mesas do Salão Principal (mesa principal + 2 mesas de banquete)
+                { x1: 1120, y1: 145, x2: 1440, y2: 260 },
+                { x1: 955, y1: 255, x2: 1145, y2: 525 },
+                { x1: 1415, y1: 255, x2: 1605, y2: 525 },
+                // Parede da Biblioteca (arco da porta y:585..725 ABERTO!) + estantes sólidas
+                { x1: 585, y1: 180, x2: 695, y2: 585 },
+                { x1: 545, y1: 725, x2: 650, y2: 1135 },
+                { x1: 205, y1: 430, x2: 400, y2: 605 },
+                { x1: 465, y1: 430, x2: 600, y2: 605 },
+                { x1: 170, y1: 840, x2: 405, y2: 1035 },
+                // Parede das Masmorras de Poções (arco da porta y:585..725 ABERTO!) + caldeirões e mesas sólidas
+                { x1: 1865, y1: 180, x2: 1975, y2: 585 },
+                { x1: 1910, y1: 725, x2: 2015, y2: 1135 },
+                { x1: 1990, y1: 355, x2: 2330, y2: 485 },
+                { x1: 2180, y1: 775, x2: 2325, y2: 955 },
+                { x1: 2150, y1: 1020, x2: 2365, y2: 1125 },
+                { x1: 1965, y1: 770, x2: 2065, y2: 985 },
+                // Objetos da Torre de Astronomia (globo celeste e telescópio)
+                { x1: 1020, y1: 1005, x2: 1170, y2: 1160 },
+                { x1: 1395, y1: 1015, x2: 1560, y2: 1160 }
+            ];
+        }
+
+        getHogsmeadeSolids() {
+            return [
+                // Céu estrelado no topo (avenida central x:1150..1410 aberta!)
+                { x1: 0, y1: 0, x2: 1145, y2: 265 },
+                { x1: 1415, y1: 0, x2: 2560, y2: 265 },
+                // Lojas da Vila de Hogsmeade (Dedosdemel, Três Vassouras, casinha esquerda)
+                { x1: 0, y1: 180, x2: 495, y2: 655 },
+                { x1: 545, y1: 180, x2: 1110, y2: 695 },
+                { x1: 0, y1: 710, x2: 335, y2: 1175 },
+                // Pinheiros + Cabana do Hagrid + cercado das abóboras (entrada da trilha x:1870..2020 aberta!)
+                { x1: 1525, y1: 180, x2: 1845, y2: 445 },
+                { x1: 1845, y1: 180, x2: 2425, y2: 590 },
+                { x1: 2410, y1: 180, x2: 2560, y2: 960 },
+                { x1: 1525, y1: 445, x2: 1860, y2: 790 },
+                { x1: 2045, y1: 590, x2: 2450, y2: 810 },
+                // Expresso de Hogwarts e trilhos na parte inferior (plataforma superior livre!)
+                { x1: 1640, y1: 1135, x2: 2560, y2: 1440 },
+                { x1: 890, y1: 1245, x2: 1640, y2: 1440 }
+            ];
+        }
+
         isBlockedOnGround(x, y) {
             if (y < 210) return true;
-            for (const r of this.getValleySolids()) {
+            const solids = this.activeWorld === "hogsmeade" ? this.getHogsmeadeSolids() : this.getValleySolids();
+            for (const r of solids) {
                 if (x > r.x1 && x < r.x2 && y > r.y1 && y < r.y2) return true;
             }
             return false;
@@ -1610,16 +1967,11 @@
                 };
             }
 
-            if (this.activeWorld === "castle") {
-                return {
-                    x: Phaser.Math.Clamp(nx, 150, WORLD_W - 150),
-                    y: Phaser.Math.Clamp(ny, 240, WORLD_H - 95)
-                };
-            }
-
             let x = Phaser.Math.Clamp(nx, 70, WORLD_W - 70);
             let y = Phaser.Math.Clamp(ny, 210, WORLD_H - 42);
-            const solids = this.getValleySolids();
+            const solids = this.activeWorld === "castle"
+                ? this.getCastleSolids()
+                : (this.activeWorld === "hogsmeade" ? this.getHogsmeadeSolids() : this.getValleySolids());
 
             for (let pass = 0; pass < 2; pass++) {
                 for (const r of solids) {
@@ -1645,6 +1997,71 @@
             // Vagalumes flutuando
             for (const f of this.ambientFireflies) {
                 f.y = f.baseY + Math.sin(time * 0.0018 * f.speed + f.phase) * 9;
+            }
+
+            // Fumaça animada subindo da chaminé do Expresso de Hogwarts em Hogsmeade!
+            if (this.activeWorld === "hogsmeade") {
+                this.trainSteamTimer += dt;
+                if (this.trainSteamTimer > 0.24) {
+                    this.trainSteamTimer = 0;
+                    const puff = this.add.image(1785 + Phaser.Math.Between(-8, 8), 1105, "soft_glow")
+                        .setTint(0xeef5ff)
+                        .setScale(Phaser.Math.FloatBetween(0.32, 0.55))
+                        .setAlpha(0.65)
+                        .setDepth(11.9);
+                    this.tweens.add({
+                        targets: puff,
+                        x: puff.x + Phaser.Math.Between(35, 85),
+                        y: puff.y - Phaser.Math.Between(55, 95),
+                        scale: 1.15,
+                        alpha: 0,
+                        duration: 1400,
+                        ease: "Sine.easeOut",
+                        onComplete: () => puff.destroy()
+                    });
+                }
+            }
+
+            // Chamas vivas nas velas + caldeirões borbulhando dentro do Castelo!
+            if (this.activeWorld === "castle") {
+                if (this.castleFlames) {
+                    for (const fl of this.castleFlames) {
+                        const flicker = Math.sin(time * 0.017 + fl.phase) * 0.14 + Math.cos(time * 0.029 + fl.phase * 1.7) * 0.08;
+                        fl.glow.setScale(fl.s * (1.05 + flicker), fl.s * (1.15 + flicker * 1.3));
+                        fl.glow.setAlpha(0.48 + flicker * 0.65);
+                        fl.core.setPosition(fl.x + Math.sin(time * 0.022 + fl.phase) * 1.4, fl.y - 3 - Math.abs(flicker) * 6);
+                        fl.core.setScale(fl.s * (0.78 + flicker * 0.9), fl.s * (1.05 + flicker * 1.6));
+                    }
+                }
+                if (this.castleCauldrons) {
+                    for (const c of this.castleCauldrons) {
+                        const pulse = 0.55 + Math.sin(time * 0.006 + c.phase) * 0.22;
+                        c.glow.setAlpha(pulse);
+                    }
+                    this.cauldronBubbleTimer += dt;
+                    if (this.cauldronBubbleTimer > 0.14) {
+                        this.cauldronBubbleTimer = 0;
+                        for (const c of this.castleCauldrons) {
+                            const bx = c.x + Phaser.Math.Between(-c.r, c.r);
+                            const by = c.y + Phaser.Math.Between(-6, 6);
+                            const bub = this.add.image(bx, by, "sparkle_dot")
+                                .setTint(Math.random() > 0.3 ? 0x4dff9e : 0xd4ff70)
+                                .setScale(Phaser.Math.FloatBetween(0.24, 0.52))
+                                .setAlpha(0.88)
+                                .setDepth(11.9);
+                            this.tweens.add({
+                                targets: bub,
+                                x: bx + Phaser.Math.Between(-12, 12),
+                                y: by - Phaser.Math.Between(28, 56),
+                                scale: 0.72,
+                                alpha: 0,
+                                duration: Phaser.Math.Between(520, 880),
+                                ease: "Sine.easeOut",
+                                onComplete: () => bub.destroy()
+                            });
+                        }
+                    }
+                }
             }
 
             // Isac voando no céu do vale
@@ -1756,13 +2173,23 @@
             this.playerSprinting = isMoving && (isSprinting || this.isFlying);
 
             if (this.isFlying) {
-                // Helora voando na vassoura com o gatinho sentado na ponta!
+                // Helora voando na vassoura: costas (↑) com helora_broom_back e demais direções com helora_broom original!
                 if (this.player.anims.isPlaying) this.player.anims.stop();
-                this.player.setTexture("helora_broom");
-                if (this.velX < -15) this.player.setFlipX(true);
-                else if (this.velX > 15) this.player.setFlipX(false);
+                if (this.velY < -18 && Math.abs(this.velY) > Math.abs(this.velX) * 1.1) {
+                    this.player.setTexture("helora_broom_back");
+                    this.player.setFlipX(this.velX > 25);
+                    this.player.setAngle(Math.sin(time * 0.006) * 2.2);
+                } else {
+                    if (Math.abs(this.velX) > 15 || this.velY > 18 || this.player.texture.key !== "helora_broom_back") {
+                        this.player.setTexture("helora_broom");
+                        if (this.velX < -15) this.player.setFlipX(true);
+                        else if (this.velX > 15) this.player.setFlipX(false);
+                    }
+                    const dirSign = this.player.flipX ? -1 : 1;
+                    const pitchAngle = Phaser.Math.Clamp((this.velY / 450) * 14 * dirSign, -14, 14);
+                    this.player.setAngle(pitchAngle + Math.sin(time * 0.006) * 2.2);
+                }
                 this.player.setScale(0.48);
-                this.player.setAngle(Math.sin(time * 0.006) * 2.5);
                 this.kitten.setVisible(false);
                 this.kittenShadow.setVisible(false);
 
@@ -1799,8 +2226,9 @@
                 } else if (this.velY < 0) {
                     this.facing = "up";
                     this.player.setFlipX(false);
-                    if (this.player.anims.currentAnim?.key !== "helora_back_anim" || !this.player.anims.isPlaying) {
-                        this.player.play("helora_back_anim", true);
+                    const animKey = isSprinting ? "helora_run_back_anim" : "helora_back_anim";
+                    if (this.player.anims.currentAnim?.key !== animKey || !this.player.anims.isPlaying) {
+                        this.player.play(animKey, true);
                     }
                 } else {
                     this.facing = "down";
@@ -1986,7 +2414,70 @@
                 return;
             }
 
+            if (this.activeWorld === "hogsmeade") {
+                // Transição contínua ao subir pela estrada norte de Hogsmeade -> Vale!
+                if (py <= 238 && px > 1165 && px < 1395) {
+                    this.state = "MODAL";
+                    this.switchWorld("valley", { x: 1280, y: 1275 }, "🌍 De volta ao Vale de Hogwarts!");
+                    return;
+                }
+                for (const st of this.hogsmeadeStars) {
+                    if (!st.collected && Phaser.Math.Distance.Between(px, py, st.x, st.y) < 48) {
+                        st.collected = true;
+                        st.sprite._worldHidden = true;
+                        st.sprite.setVisible(false);
+                        SoundFX.playCollect();
+                        this.burstMagic(st.x, st.y, 12);
+                        this.addHousePoints(15, st.x, st.y);
+                    }
+                }
+                for (const p of this.hogsmeadePotions) {
+                    if (!p.collected && Phaser.Math.Distance.Between(px, py, p.x, p.y) < 52) {
+                        p.collected = true;
+                        p.sprite._worldHidden = true;
+                        p.glow._worldHidden = true;
+                        p.sprite.setVisible(false);
+                        p.glow.setVisible(false);
+                        this.felixTimer = 6.0;
+                        UI.hudFelix.classList.remove("hidden");
+                        SoundFX.playPotion();
+                        this.burstMagic(p.x, p.y, 24);
+                        this.addHousePoints(25, p.x, p.y);
+                    }
+                }
+                let nearItem = null;
+                for (const it of this.hogsmeadeInteractables) {
+                    if (it.type === "castle_note" && it.done) continue;
+                    if (Phaser.Math.Distance.Between(px, py, it.x, it.y) < 88) {
+                        nearItem = it;
+                        break;
+                    }
+                }
+                this.activeInteractable = nearItem;
+                if (nearItem) {
+                    UI.btnExplore.textContent = nearItem.label;
+                    UI.btnExplore.classList.remove("hidden");
+                } else {
+                    UI.btnExplore.classList.add("hidden");
+                }
+                if (!this.isFlying) {
+                    for (const cp of this.hogsmeadeCheckpoints) {
+                        if (!cp.solved && Phaser.Math.Distance.Between(px, py, cp.x, cp.y) < 66) {
+                            this.triggerQuiz(cp);
+                            return;
+                        }
+                    }
+                }
+                return;
+            }
+
             // === MUNDO EXTERNO: VALE DE HOGWARTS ===
+            // Transição contínua ao descer pela estrada sul do Vale -> Vila de Hogsmeade!
+            if (py >= 1388 && px > 1170 && px < 1390) {
+                this.state = "MODAL";
+                this.switchWorld("hogsmeade", DATA.hogsmeadeWorld.startPos, "🏘️ Bem-vinda à Vila de Hogsmeade & Expresso!");
+                return;
+            }
             // 0. Coletar Vassoura Mágica no Campo de Quadribol!
             if (!this.hasBroom && Phaser.Math.Distance.Between(px, py, DATA.broomPos.x, DATA.broomPos.y) < 58) {
                 this.hasBroom = true;
