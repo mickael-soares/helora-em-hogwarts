@@ -91,6 +91,12 @@
         },
         playPotion() {
             [659.25, 880, 1174.66, 1318.5].forEach((n, i) => this.tone(n, i * 0.05, 0.26, "triangle", 0.11));
+        },
+        playTrainWhistle() {
+            this.tone(587.33, 0.00, 0.55, "sine", 0.06);
+            this.tone(739.99, 0.02, 0.52, "triangle", 0.045);
+            this.tone(587.33, 0.65, 0.70, "sine", 0.055);
+            this.tone(739.99, 0.67, 0.68, "triangle", 0.04);
         }
     };
 
@@ -456,6 +462,7 @@
             this.load.image("npc_denis", ASSETS.npc_denis);
             this.load.spritesheet("vfx_fire_4f", ASSETS.vfx_fire_4f, { frameWidth: 128, frameHeight: 128 });
             this.load.spritesheet("vfx_cauldron_4f", ASSETS.vfx_cauldron_4f, { frameWidth: 128, frameHeight: 128 });
+            this.load.image("mid_train", ASSETS.mid_train);
             this.load.image("decor_star", ASSETS.decor_star);
             this.load.image("decor_potion", ASSETS.decor_potion);
             this.load.image("prop_platform", ASSETS.prop_platform);
@@ -1036,6 +1043,15 @@
                 label: "⬇ Ir para Vila de Hogsmeade",
                 done: false
             });
+
+            // 9. Expresso de Hogwarts animado cruzando o viaduto de pedra no Vale (a cada 30s!)
+            this.valleyTrain = this.add.image(1820, 1560, "mid_train")
+                .setScale(0.76)
+                .setAngle(-36.5)
+                .setDepth(11.75);
+            this.valleyTrainActive = false;
+            this.valleyTrainTimer = 4.0; // Primeira passagem em 4s para ver logo!
+            this.valleyTrainSteamTimer = 0;
         }
 
         buildCastleWorldContent() {
@@ -1322,6 +1338,76 @@
                     });
                 });
             }
+
+            // Expresso de Hogwarts animado na Estação de Hogsmeade (chega, para 6s, parte e volta a cada 30s!)
+            this.hogsmeadeTrain = this.add.image(2900, 1225, "mid_train")
+                .setScale(0.92)
+                .setFlipX(true)
+                .setDepth(11.75);
+            this.hogsmeadeTrainState = "WAITING"; // WAITING | ARRIVING | STOPPED | DEPARTING
+            this.hogsmeadeTrainTimer = 2.0; // Primeira chegada em 2s ao entrar em Hogsmeade!
+        }
+
+        launchValleyTrain() {
+            if (!this.valleyTrain || this.valleyTrainActive) return;
+            this.valleyTrainActive = true;
+            this.valleyTrain.setPosition(1810, 1570).setAngle(-36.5);
+            if (this.activeWorld === "valley" && this.state === "WALKING") {
+                SoundFX.playTrainWhistle();
+            }
+            this.tweens.add({
+                targets: this.valleyTrain,
+                x: 2790,
+                y: 845,
+                duration: 6800,
+                ease: "Linear",
+                onComplete: () => {
+                    this.valleyTrainActive = false;
+                    this.valleyTrainTimer = 30.0; // Retorna em 30 segundos!
+                }
+            });
+        }
+
+        launchHogsmeadeTrain() {
+            if (!this.hogsmeadeTrain || this.hogsmeadeTrainState !== "WAITING") return;
+            this.hogsmeadeTrainState = "ARRIVING";
+            this.hogsmeadeTrain.setPosition(2920, 1225).setAngle(0);
+            if (this.activeWorld === "hogsmeade") SoundFX.playTrainWhistle();
+
+            this.tweens.add({
+                targets: this.hogsmeadeTrain,
+                x: 2040,
+                duration: 3400,
+                ease: "Cubic.easeOut",
+                onComplete: () => {
+                    this.hogsmeadeTrainState = "STOPPED";
+                    this.time.delayedCall(6000, () => {
+                        if (!this.hogsmeadeTrain) return;
+                        this.hogsmeadeTrainState = "DEPARTING";
+                        if (this.activeWorld === "hogsmeade") SoundFX.playTrainWhistle();
+                        this.tweens.add({
+                            targets: this.hogsmeadeTrain,
+                            x: 1180,
+                            duration: 3000,
+                            ease: "Quad.easeIn",
+                            onComplete: () => {
+                                this.tweens.add({
+                                    targets: this.hogsmeadeTrain,
+                                    x: 720,
+                                    y: 1520,
+                                    angle: -28,
+                                    duration: 1800,
+                                    ease: "Linear",
+                                    onComplete: () => {
+                                        this.hogsmeadeTrainState = "WAITING";
+                                        this.hogsmeadeTrainTimer = 30.0; // Retorna em 30 segundos!
+                                    }
+                                });
+                            }
+                        });
+                    });
+                }
+            });
         }
 
         clearRoomObjects() {
@@ -2145,26 +2231,43 @@
                 f.y = f.baseY + Math.sin(time * 0.0018 * f.speed + f.phase) * 9;
             }
 
-            // Fumaça animada subindo da chaminé do Expresso de Hogwarts em Hogsmeade!
-            if (this.activeWorld === "hogsmeade") {
-                this.trainSteamTimer += dt;
-                if (this.trainSteamTimer > 0.24) {
-                    this.trainSteamTimer = 0;
-                    const puff = this.add.image(1785 + Phaser.Math.Between(-8, 8), 1105, "soft_glow")
-                        .setTint(0xeef5ff)
-                        .setScale(Phaser.Math.FloatBetween(0.32, 0.55))
-                        .setAlpha(0.65)
-                        .setDepth(11.9);
-                    this.tweens.add({
-                        targets: puff,
-                        x: puff.x + Phaser.Math.Between(35, 85),
-                        y: puff.y - Phaser.Math.Between(55, 95),
-                        scale: 1.15,
-                        alpha: 0,
-                        duration: 1400,
-                        ease: "Sine.easeOut",
-                        onComplete: () => puff.destroy()
-                    });
+            // Expresso de Hogwarts animado no Vale (viaduto diagonal, ciclo de 30s) e em Hogsmeade (estação, ciclo de 30s)!
+            if (this.activeWorld === "valley" && this.valleyTrain) {
+                if (!this.valleyTrainActive) {
+                    this.valleyTrainTimer -= dt;
+                    if (this.valleyTrainTimer <= 0) this.launchValleyTrain();
+                } else {
+                    this.valleyTrainSteamTimer += dt;
+                    if (this.valleyTrainSteamTimer > 0.14) {
+                        this.valleyTrainSteamTimer = 0;
+                        const puff = this.add.image(this.valleyTrain.x + 70, this.valleyTrain.y - 52, "soft_glow")
+                            .setTint(0xf0f6ff).setScale(Phaser.Math.FloatBetween(0.32, 0.55)).setAlpha(0.68).setDepth(11.9);
+                        this.tweens.add({
+                            targets: puff, x: puff.x - 45, y: puff.y - 55, scale: 1.15, alpha: 0,
+                            duration: 1100, ease: "Sine.easeOut", onComplete: () => puff.destroy()
+                        });
+                    }
+                }
+            }
+
+            if (this.activeWorld === "hogsmeade" && this.hogsmeadeTrain) {
+                if (this.hogsmeadeTrainState === "WAITING") {
+                    this.hogsmeadeTrainTimer -= dt;
+                    if (this.hogsmeadeTrainTimer <= 0) this.launchHogsmeadeTrain();
+                } else {
+                    this.trainSteamTimer += dt;
+                    if (this.trainSteamTimer > 0.18) {
+                        this.trainSteamTimer = 0;
+                        const puff = this.add.image(this.hogsmeadeTrain.x - 115, this.hogsmeadeTrain.y - 52, "soft_glow")
+                            .setTint(0xeef5ff).setScale(Phaser.Math.FloatBetween(0.34, 0.58)).setAlpha(0.68).setDepth(11.9);
+                        this.tweens.add({
+                            targets: puff,
+                            x: puff.x + Phaser.Math.Between(35, 85),
+                            y: puff.y - Phaser.Math.Between(55, 95),
+                            scale: 1.2, alpha: 0, duration: 1300, ease: "Sine.easeOut",
+                            onComplete: () => puff.destroy()
+                        });
+                    }
                 }
             }
 
