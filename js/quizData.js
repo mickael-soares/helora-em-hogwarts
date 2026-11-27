@@ -479,11 +479,7 @@ window.HELORA_QUIZ_DATA = {
                 { x1: 1440, y1: 1320, x2: 2560, y2: 1440 } // Parede inferior direita da porta
             ],
             flames: [
-                { x: 1280, y: 500, s: 1.15 }, // Lareira central acesa!
-                { x: 1715, y: 650, s: 0.42 }, // Vela mesa superior
-                { x: 1860, y: 985, s: 0.42 }, // Vela mesa inferior
-                { x: 2345, y: 650, s: 0.42 }, // Vela mesa direita
-                { x: 2525, y: 980, s: 0.40 }  // Vela canto inferior direito
+                { x: 1280, y: 500, s: 1.15 } // Apenas a lareira central acesa!
             ],
             stars: [
                 { x: 1180, y: 760 }, { x: 1420, y: 760 }, { x: 1280, y: 980 }, { x: 1020, y: 1140 }
@@ -517,11 +513,7 @@ window.HELORA_QUIZ_DATA = {
                 { x1: 0, y1: 1320, x2: 1110, y2: 1440 },    // Parede inferior esquerda da porta
                 { x1: 1450, y1: 1320, x2: 2560, y2: 1440 }  // Parede inferior direita da porta
             ],
-            flames: [
-                { x: 675, y: 270, s: 0.50 },
-                { x: 1280, y: 215, s: 0.55 },
-                { x: 1925, y: 215, s: 0.50 }
-            ],
+            flames: [],
             stars: [
                 { x: 1050, y: 860 }, { x: 1280, y: 860 }, { x: 1520, y: 860 }, { x: 1740, y: 980 }
             ],
@@ -554,9 +546,7 @@ window.HELORA_QUIZ_DATA = {
                 { x1: 1450, y1: 1320, x2: 2560, y2: 1440 }  // Parede inferior direita da porta
             ],
             flames: [
-                { x: 1280, y: 550, s: 1.05 }, // Fogo sob o caldeirão da lareira
-                { x: 705, y: 245, s: 0.48 },
-                { x: 2065, y: 390, s: 0.48 }
+                { x: 1280, y: 550, s: 1.05 } // Apenas a lareira sob o caldeirão
             ],
             cauldrons: [
                 { x: 1280, y: 475, r: 34 }    // Caldeirão borbulhando na lareira do Hagrid!
@@ -592,14 +582,7 @@ window.HELORA_QUIZ_DATA = {
                 { x1: 1840, y1: 690, x2: 2560, y2: 1440 },  // Águas do Lago Negro (deixa o cais x:1780..2030 acessível na borda!)
                 { x1: 2040, y1: 350, x2: 2560, y2: 690 }    // Muralha do arco do Quadribol
             ],
-            flames: [
-                { x: 1158, y: 495, s: 0.62 }, // Braseiro superior esquerdo
-                { x: 1482, y: 495, s: 0.62 }, // Braseiro superior direito
-                { x: 1138, y: 650, s: 0.65 }, // Braseiro inferior esquerdo
-                { x: 1502, y: 650, s: 0.65 }, // Braseiro inferior direito
-                { x: 1110, y: 1135, s: 0.50 },
-                { x: 1530, y: 1135, s: 0.50 }
-            ],
+            flames: [],
             stars: [
                 { x: 560, y: 1120 }, { x: 860, y: 940 }, { x: 1280, y: 1080 },
                 { x: 1280, y: 820 }, { x: 1320, y: 560 }, { x: 1680, y: 560 },

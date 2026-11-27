@@ -1145,39 +1145,8 @@
                 done: false
             });
 
-            // Efeitos de fogo animado nas velas e arandelas do Castelo
+            // Sem fogo nas velas/arandelas do Castelo (fogo reservado apenas para lareiras)
             this.castleFlames = [];
-            const flameSpots = [
-                // Mesas de banquete + mesa principal do Salão Principal
-                { x: 1068, y: 292, s: 0.44 }, { x: 1044, y: 405, s: 0.46 },
-                { x: 1492, y: 292, s: 0.44 }, { x: 1516, y: 405, s: 0.46 },
-                { x: 1188, y: 152, s: 0.40 }, { x: 1372, y: 152, s: 0.40 },
-                // Arandelas laterais do Salão Principal e Corredores
-                { x: 966, y: 220, s: 0.38 }, { x: 924, y: 392, s: 0.38 },
-                { x: 1594, y: 220, s: 0.38 }, { x: 1636, y: 392, s: 0.38 },
-                { x: 1200, y: 615, s: 0.45 }, { x: 1360, y: 615, s: 0.45 },
-                { x: 1200, y: 765, s: 0.45 }, { x: 1360, y: 765, s: 0.45 },
-                // Lanternas da Biblioteca e Corredores
-                { x: 775, y: 775, s: 0.44 }, { x: 1785, y: 775, s: 0.44 },
-                { x: 338, y: 315, s: 0.40 }, { x: 520, y: 375, s: 0.40 },
-                { x: 248, y: 600, s: 0.40 }, { x: 505, y: 820, s: 0.40 },
-                // Torre de Astronomia
-                { x: 1185, y: 995, s: 0.40 }, { x: 1375, y: 995, s: 0.40 },
-                { x: 1175, y: 1355, s: 0.42 }, { x: 1385, y: 1355, s: 0.42 }
-            ];
-            flameSpots.forEach((f, idx) => {
-                const glow = this.add.image(f.x, f.y - 6, "soft_glow")
-                    .setTint(0xff9c38)
-                    .setScale(f.s * 1.15)
-                    .setAlpha(0.45)
-                    .setDepth(11.7);
-                const core = this.add.sprite(f.x, f.y + 4, "vfx_fire_4f")
-                    .setOrigin(0.5, 1)
-                    .setScale(f.s * 0.52)
-                    .setDepth(11.8);
-                core.play({ key: "vfx_fire_anim", startFrame: idx % 4 });
-                this.castleFlames.push({ glow, core, x: f.x, y: f.y, s: f.s, phase: idx * 1.37 });
-            });
 
             // Caldeirões borbulhando nas Masmorras de Poções (VFX pintado 4-frames!)
             this.castleCauldrons = [
